@@ -11,8 +11,6 @@ const auth = require("../middleware/auth.middleware");
 const allowRoles = require("../middleware/role.middleware");
 const Driver = require("../models/Driver");
 
-
-
 // TEST ROUTE (IMPORTANT)
 router.get("/test", (req, res) => {
   res.send("student route working");
@@ -31,19 +29,40 @@ router.get("/profile", auth, allowRoles(["student"]), async (req, res) => {
 
     let driver = null;
     let bus = null;
+    let stopDetails = null;
 
     if (student.assignedBus) {
       driver = await Driver.findOne({ assignedBus: student.assignedBus });
-      bus = await Bus.findOne({ busNo: student.assignedBus }); // 🔥 ADD THIS
+      bus = await Bus.findOne({ busNo: student.assignedBus });
+
+      if (bus) {
+        // 🔥 Find matching stop
+        const matchedStop = bus.stops.find(
+          (stop) =>
+            stop.stopName.trim().toLowerCase() ===
+            student.busStop.trim().toLowerCase(),
+        );
+
+        if (matchedStop) {
+          stopDetails = {
+            stopName: matchedStop.stopName,
+            morningTime: matchedStop.morningTime,
+            eveningTime: matchedStop.eveningTime,
+          };
+        }
+      }
     }
 
-    res.json({ student, driver, bus }); // 🔥 SEND BUS ALSO
-
+    res.json({
+      student,
+      driver,
+      bus,
+      stopDetails, // 🔥 Now contains both times
+    });
   } catch (error) {
     res.status(500).json({ message: error.message });
   }
 });
-
 
 router.post("/select-stop", auth, allowRoles(["student"]), async (req, res) => {
   try {

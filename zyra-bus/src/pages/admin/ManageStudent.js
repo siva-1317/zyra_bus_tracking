@@ -7,13 +7,14 @@ import {
   Row,
   Col,
   Badge,
-  Card
+  Card,
 } from "react-bootstrap";
 import API from "../../api";
 
 export default function ManageStudent() {
-
   const [students, setStudents] = useState([]);
+  const [buses, setBuses] = useState([]);
+
 
   // 🔹 NEW STUDENT FORM
   const [newStudent, setNewStudent] = useState({
@@ -21,7 +22,7 @@ export default function ManageStudent() {
     name: "",
     department: "",
     year: "",
-    phone: ""
+    phone: "",
   });
 
   const [search, setSearch] = useState("");
@@ -41,13 +42,19 @@ export default function ManageStudent() {
 
   useEffect(() => {
     fetchStudents();
+      fetchBuses();
   }, []);
+
+
+  const fetchBuses = async () => {
+  const res = await API.get("/admin/bus");
+  setBuses(res.data);
+};
 
   // ===============================
   // 🔹 ADD STUDENT
   // ===============================
   const handleAddStudent = async () => {
-
     if (!newStudent.rollNumber) {
       alert("Roll Number required");
       return;
@@ -63,11 +70,10 @@ export default function ManageStudent() {
         name: "",
         department: "",
         year: "",
-        phone: ""
+        phone: "",
       });
 
       fetchStudents();
-
     } catch (err) {
       alert(err.response?.data?.message || "Error adding student");
     }
@@ -75,23 +81,20 @@ export default function ManageStudent() {
 
   // 🔹 Filter Logic
   const filteredStudents = students.filter((s) => {
-
     const matchSearch =
       s.rollNumber.toLowerCase().includes(search.toLowerCase()) ||
       s.name?.toLowerCase().includes(search.toLowerCase());
 
-    const matchDept =
-      filterDept ? s.department === filterDept : true;
+    const matchDept = filterDept ? s.department === filterDept : true;
 
     const matchAssigned =
       filterBusAssigned === "assigned"
         ? s.assignedBus
         : filterBusAssigned === "not_assigned"
-        ? !s.assignedBus
-        : true;
+          ? !s.assignedBus
+          : true;
 
-    const matchBusNo =
-      filterBusNo ? s.assignedBus === filterBusNo : true;
+    const matchBusNo = filterBusNo ? s.assignedBus === filterBusNo : true;
 
     return matchSearch && matchDept && matchAssigned && matchBusNo;
   });
@@ -107,7 +110,7 @@ export default function ManageStudent() {
   const handleUpdate = async () => {
     await API.put(
       `/admin/student/${selectedStudent.rollNumber}`,
-      selectedStudent
+      selectedStudent,
     );
     fetchStudents();
     setShowModal(false);
@@ -117,7 +120,7 @@ export default function ManageStudent() {
   const handleResetPassword = async () => {
     await API.put(
       `/admin/reset-student-password/${selectedStudent.rollNumber}`,
-      { newPassword }
+      { newPassword },
     );
     alert("Password Reset Successfully");
     setNewPassword("");
@@ -125,7 +128,6 @@ export default function ManageStudent() {
 
   return (
     <div>
-
       <h3 className="mb-3">Manage Students</h3>
 
       {/* =============================== */}
@@ -187,10 +189,7 @@ export default function ManageStudent() {
           </Col>
         </Row>
 
-        <Button
-          className="mt-3"
-          onClick={handleAddStudent}
-        >
+        <Button className="mt-3" onClick={handleAddStudent}>
           Add Student
         </Button>
       </Card>
@@ -269,10 +268,7 @@ export default function ManageStudent() {
                 )}
               </td>
               <td>
-                <Button
-                  size="sm"
-                  onClick={() => openStudent(s.rollNumber)}
-                >
+                <Button size="sm" onClick={() => openStudent(s.rollNumber)}>
                   View
                 </Button>
               </td>
@@ -281,9 +277,116 @@ export default function ManageStudent() {
         </tbody>
       </Table>
 
+      <Modal show={showModal} onHide={() => setShowModal(false)} centered>
+        <Modal.Header closeButton>
+          <Modal.Title>Student Details</Modal.Title>
+        </Modal.Header>
+
+        <Modal.Body>
+          {selectedStudent && (
+            <>
+              <Form.Group className="mb-2">
+                <Form.Label>Name</Form.Label>
+                <Form.Control
+                  value={selectedStudent.name || ""}
+                  onChange={(e) =>
+                    setSelectedStudent({
+                      ...selectedStudent,
+                      name: e.target.value,
+                    })
+                  }
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-2">
+                <Form.Label>Department</Form.Label>
+                <Form.Control
+                  value={selectedStudent.department || ""}
+                  onChange={(e) =>
+                    setSelectedStudent({
+                      ...selectedStudent,
+                      department: e.target.value,
+                    })
+                  }
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-2">
+                <Form.Label>Year</Form.Label>
+                <Form.Control
+                  value={selectedStudent.year || ""}
+                  onChange={(e) =>
+                    setSelectedStudent({
+                      ...selectedStudent,
+                      year: e.target.value,
+                    })
+                  }
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-2">
+                <Form.Label>Phone</Form.Label>
+                <Form.Control
+                  value={selectedStudent.phone || ""}
+                  onChange={(e) =>
+                    setSelectedStudent({
+                      ...selectedStudent,
+                      phone: e.target.value,
+                    })
+                  }
+                />
+              </Form.Group>
+
+              <Form.Group className="mb-2">
+                <Form.Label>Assign Bus</Form.Label>
+                <Form.Select
+                  value={selectedStudent.assignedBus || ""}
+                  onChange={(e) =>
+                    setSelectedStudent({
+                      ...selectedStudent,
+                      assignedBus: e.target.value,
+                    })
+                  }
+                >
+                  <option value="">-- Select Bus --</option>
+
+                  {buses.map((bus) => (
+                    <option key={bus._id} value={bus.busNo}>
+                      {bus.busNo} - {bus.routeName}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+
+              <hr />
+
+              <Form.Group className="mb-2">
+                <Form.Label>New Password</Form.Label>
+                <Form.Control
+                  type="password"
+                  value={newPassword}
+                  onChange={(e) => setNewPassword(e.target.value)}
+                />
+              </Form.Group>
+
+              <Button
+                variant="warning"
+                className="me-2"
+                onClick={handleResetPassword}
+              >
+                Reset Password
+              </Button>
+
+              <Button variant="primary" onClick={handleUpdate}>
+                Update Student
+              </Button>
+            </>
+          )}
+        </Modal.Body>
+      </Modal>
+
       {/* Modal remains same */}
       {/* (Your existing modal code unchanged below) */}
-
     </div>
   );
 }
