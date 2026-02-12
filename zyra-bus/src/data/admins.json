@@ -1,0 +1,10 @@
+{
+  "admins": [
+    {
+      "id": "ADMIN01",
+      "password": "admin123",
+      "role": "Admin",
+      "name": "Transport Admin"
+    }
+  ]
+}

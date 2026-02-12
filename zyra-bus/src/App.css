@@ -1,0 +1,72 @@
+
+
+.primary-color{
+  color: blueviolet;
+}
+
+/* Sidebar Background */
+/* Sidebar Background */
+.sidebar {
+  background: blueviolet;
+}
+
+/* Force nav-link inside sidebar to be white */
+.sidebar .nav-link {
+  color: white !important;
+  font-weight: 500;
+  padding: 10px 15px;
+  border-radius: 8px;
+  margin-bottom: 6px;
+  transition: all 0.3s ease;
+}
+
+/* Hover effect */
+.sidebar .nav-link:hover {
+  background-color: rgba(255, 255, 255, 0.15);
+  color: white !important;
+}
+
+/* Active link */
+.sidebar .active-link {
+  background-color: rgba(255, 255, 255, 0.25) !important;
+  font-weight: bold;
+  color: white !important;
+}
+
+
+
+.login-form{
+  width: 500px;
+  margin: auto;
+  padding: 50px;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);
+  justify-content: center;
+}
+
+.login-button{
+  background-color: blueviolet;
+  color: white;
+  border: none;
+  padding: 10px 20px;
+  border-radius: 5px;
+  cursor: pointer;
+}
+
+.login-container{
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100vh;
+}
+
+
+.custom-progress .progress-bar {
+  background-color: blueviolet !important;
+}
+
+.progress-label {
+  font-weight: 600;
+  color: blueviolet;
+}

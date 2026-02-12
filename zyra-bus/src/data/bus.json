@@ -1,0 +1,20 @@
+{
+    "busses":[
+        {
+            "busNo":17,
+            "driverName":"aswin K",
+            "phone":9876543211,
+            "route":["BIT College","Coimbatore","Sulur","Avinashi"],
+            "arrivalTime":"07:00 AM",
+            "depatureTime": "04:45 PM"
+        },
+         {
+            "busNo":13,
+            "driverName":"Sabbu K",
+            "phone":9876543211,
+            "route":["BIT College","Gopichettipalayam","Nambiyur","Avinashi"],
+            "arrivalTime":"07:00 AM",
+            "depatureTime": "04:45 PM"
+        }
+    ]
+}

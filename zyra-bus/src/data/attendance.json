@@ -1,0 +1,22 @@
+{
+  "students": [
+    {
+      "id": "7376231ME147",
+      "name": "SIVA M",
+      "attendance": [
+        { "date": "31/05/2026", "session": "Morning", "status": "Present" },
+        { "date": "31/05/2026", "session": "Evening", "status": "Absent" },
+        { "date": "01/06/2026", "session": "Morning", "status": "Present" },
+        { "date": "02/06/2026", "session": "Evening", "status": "Present" }
+      ]
+    },
+
+    {
+      "id": "7376231ME123",
+      "name": "KISORE A",
+      "attendance": [
+   
+      ]
+    }
+  ]
+}

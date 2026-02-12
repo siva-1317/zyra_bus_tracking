@@ -1,0 +1,27 @@
+{
+  "students": [
+    {
+      "id": "7376231ME147",
+      "password": "1234",
+      "role": "Student",
+      "name": "SIVA M",
+      "location": "Coimbatore",
+      "busNo":17,
+      "email": "siva.me23@bitsathy.ac.in",
+      "phone": 6369384417,
+       "home": { "lat": 11.0168, "lng": 76.9558 }
+
+    },
+    {
+      "id": "7376231ME123",
+      "password": "1234",
+      "role": "Student",
+      "name": "KISORE A",
+      "location": "Gopichettipalayam",
+      "busNo": 13,
+      "email": "kisore.me23@bitsathy.ac.in",
+      "phone": 9876543210,
+       "home": { "lat": 11.4549, "lng": 77.4423 }
+    }
+  ]
+}

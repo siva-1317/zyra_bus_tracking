@@ -1,0 +1,18 @@
+{
+  "announcements": [
+    {
+      "id": 1,
+      "title": "Bus Delay",
+      "message": "Bus No 17 will arrive 10 minutes late.",
+      "busNo": 17,
+      "date": "06/02/2026"
+    },
+    {
+      "id": 2,
+      "title": "Holiday Notice",
+      "message": "Tomorrow is a holiday.",
+      "busNo": null,
+      "date": "06/02/2026"
+    }
+  ]
+}
