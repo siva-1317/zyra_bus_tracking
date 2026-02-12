@@ -1,70 +1,284 @@
-# Getting Started with Create React App
+# 🚌ZYRA College Bus Management System
 
-This project was bootstrapped with [Create React App](https://github.com/facebook/create-react-app).
+A Full-Stack Role-Based Bus Tracking & Management System built using **React.js, Node.js, Express.js, and MongoDB**.
 
-## Available Scripts
+This system manages Students, Drivers, Buses, and Admin operations with secure authentication and real-time stop-based tracking.
 
-In the project directory, you can run:
 
-### `npm start`
+---
 
-Runs the app in the development mode.\
-Open [http://localhost:3000](http://localhost:3000) to view it in your browser.
+# 📌 Table of Contents
 
-The page will reload when you make changes.\
-You may also see any lint errors in the console.
+- Project Overview
+- User Roles
+- Authentication Flow
+- Student Module
+- Driver Module
+- Admin Module
+- Bus Tracking Logic
+- Technology Stack
+- Installation Guide
+- Environment Variables
+- API Overview
+- Security
+- Future Enhancements
 
-### `npm test`
+---
 
-Launches the test runner in the interactive watch mode.\
-See the section about [running tests](https://facebook.github.io/create-react-app/docs/running-tests) for more information.
+# 🚀 Project Overview
 
-### `npm run build`
+The **College Bus Management System** streamlines college transportation management using:
 
-Builds the app for production to the `build` folder.\
-It correctly bundles React in production mode and optimizes the build for the best performance.
+- Role-Based Access Control
+- JWT Authentication
+- Stop-Based Bus Tracking
+- Admin Management Panel
+- Leave & Feedback Management
 
-The build is minified and the filenames include the hashes.\
-Your app is ready to be deployed!
+---
 
-See the section about [deployment](https://facebook.github.io/create-react-app/docs/deployment) for more information.
+# 👥 User Roles
 
-### `npm run eject`
+The system supports three roles:
 
-**Note: this is a one-way operation. Once you `eject`, you can't go back!**
+1. **Student**
+2. **Driver**
+3. **Admin**
 
-If you aren't satisfied with the build tool and configuration choices, you can `eject` at any time. This command will remove the single build dependency from your project.
+Each role has restricted access using middleware-based authorization.
 
-Instead, it will copy all the configuration files and the transitive dependencies (webpack, Babel, ESLint, etc) right into your project so you have full control over them. All of the commands except `eject` will still work, but they will point to the copied scripts so you can tweak them. At this point you're on your own.
+---
 
-You don't have to ever use `eject`. The curated feature set is suitable for small and middle deployments, and you shouldn't feel obligated to use this feature. However we understand that this tool wouldn't be useful if you couldn't customize it when you are ready for it.
+# 🔐 Authentication Flow
 
-## Learn More
+App Launch
 
-You can learn more in the [Create React App documentation](https://facebook.github.io/create-react-app/docs/getting-started).
+↓
 
-To learn React, check out the [React documentation](https://reactjs.org/).
+Login (Username + Password)
 
-### Code Splitting
+↓
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/code-splitting](https://facebook.github.io/create-react-app/docs/code-splitting)
+JWT Authentication
 
-### Analyzing the Bundle Size
+↓
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size](https://facebook.github.io/create-react-app/docs/analyzing-the-bundle-size)
+Role Identification
 
-### Making a Progressive Web App
+↓
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app](https://facebook.github.io/create-react-app/docs/making-a-progressive-web-app)
+Redirect to Role-Based Dashboard
 
-### Advanced Configuration
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/advanced-configuration](https://facebook.github.io/create-react-app/docs/advanced-configuration)
 
-### Deployment
+---
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/deployment](https://facebook.github.io/create-react-app/docs/deployment)
+# 🎓 Student Module
 
-### `npm run build` fails to minify
+Students can:
 
-This section has moved here: [https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify](https://facebook.github.io/create-react-app/docs/troubleshooting#npm-run-build-fails-to-minify)
+- View Profile
+- View Assigned Bus
+- View Driver Details
+- View Stop-Based Progress Line
+- See ETA Calculation
+- View Announcements
+- Submit Feedback
+- Change Password
+
+---
+
+# 🚍 Driver Module
+
+Drivers can:
+
+- View Assigned Bus
+- View Route & Stops
+- Update Current Stop
+- Apply Leave
+- View Leave Status
+- Submit Feedback
+- Change Password
+
+---
+
+# 🛠 Admin Module
+
+Admins can:
+
+- Add / Update / Delete Buses
+- Add / Update / Delete Students
+- Assign Bus to Student (Manual)
+- Assign Drivers to Buses
+- Reset Passwords
+- Approve / Reject Leave
+- Post Announcements
+- Monitor Dashboard Statistics
+- Review Feedback
+
+---
+
+# 📍 Bus Stop Assignment Logic
+
+### First Time Assignment
+
+1. Student selects stop.
+2. Backend matches stop with bus route.
+3. Bus assigned automatically.
+
+### Manual Reassignment
+
+Admin updates student stop → system reassigns bus.
+
+---
+
+# 📊 Bus Tracking Logic (Progress Line System)
+
+Instead of map-based tracking, this system uses:
+
+- Straight-line stop visualization
+- Completed stops marked
+- Current stop highlighted
+- Upcoming stops displayed
+- ETA calculated using time difference
+
+### Time Calculation Logic
+
+Stop Time = 07:15
+Current Time = 07:05
+Difference = 10 minutes
+
+
+Output: Bus arriving in 10 minutes
+
+
+---
+
+# 🏗 System Architecture
+
+React Frontend
+
+↓
+
+Axios API Calls
+
+↓
+
+Express Backend
+
+↓
+
+JWT Middleware
+
+↓
+
+MongoDB Database
+
+
+---
+
+# 🧩 Technology Stack
+
+## Frontend
+- React.js
+- React Bootstrap
+- Axios
+
+## Backend
+- Node.js
+- Express.js
+- JWT Authentication
+- bcrypt (Password Hashing)
+
+## Database
+- MongoDB Atlas
+- Mongoose ODM
+
+---
+
+# 📡 Important API Routes
+
+## Student
+
+- GET /student/profile
+
+ - PUT /student/change-password
+
+## Driver
+
+- GET /driver/profile
+
+- PUT /driver/update-stop
+
+## Admin
+
+- POST /admin/bus
+
+ - PUT /admin/bus/:busNo
+
+- DELETE /admin/bus/:busNo
+
+- POST /admin/student
+
+- PUT /admin/student/:rollNumber
+
+- PUT /admin/reset-student-password/:rollNumber
+
+- PUT /admin/assign-driver
+
+---
+
+# Admin Dashboard Statistics
+
+- Total Buses
+
+- Running / Planned / Completed Trips
+
+- Total Students
+
+- Assigned / Unassigned Students
+
+- Total Drivers
+
+- Feedback Status Overview
+
+---
+
+# 🔒 Security Features
+
+- Password Hashing using bcrypt
+
+- JWT Authentication
+
+- Role-Based Middleware
+
+- Protected API Routes
+
+- No sensitive data in localStorage
+
+---
+
+# 🎯 Benefits
+
+- Secure Role-Based Architecture
+
+- Real-Time Stop Tracking
+
+- Scalable Design
+
+- Efficient Admin Management
+
+- Structured System Flow
+
+- Clean UI with Bootstrap
+
+  ---
+
+  ### 👨‍💻 Developer
+
+  Siva M
+  
+  B.E Mechanical Engineering
+  
+  Full Stack Developer | AI Enthusiast
+
