@@ -2,6 +2,9 @@ const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
 const User = require("../models/User");
+const fs = require("fs");
+const multer = require("multer");
+const csv = require("csv-parser");
 
 const Bus = require("../models/Bus");
 const Driver = require("../models/Driver");
@@ -16,82 +19,56 @@ const Announcement = require("../models/Announcement");
 /* =====================================================
    ADD BUS
    ===================================================== */
-router.post(
-  "/bus",
-  auth,
-  allowRoles(["admin"]),
-  async (req, res) => {
-    try {
-      const bus = await Bus.create(req.body);
-      res.json(bus);
-    } catch (error) {
-      res.status(400).json({ message: error.message });
-    }
+router.post("/bus", auth, allowRoles(["admin"]), async (req, res) => {
+  try {
+    const bus = await Bus.create(req.body);
+    res.json(bus);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
   }
-);
+});
 
 /* =====================================================
    GET ALL BUSES
    ===================================================== */
-router.get(
-  "/bus",
-  auth,
-  allowRoles(["admin"]),
-  async (req, res) => {
-    const buses = await Bus.find();
-    res.json(buses);
-  }
-);
+router.get("/bus", auth, allowRoles(["admin"]), async (req, res) => {
+  const buses = await Bus.find();
+  res.json(buses);
+});
 
 /* =====================================================
    UPDATE BUS (route / stops / timing)
    ===================================================== */
-router.put(
-  "/bus/:busNo",
-  auth,
-  allowRoles(["admin"]),
-  async (req, res) => {
-    const bus = await Bus.findOneAndUpdate(
-      { busNo: req.params.busNo },
-      req.body,
-      { new: true }
-    );
+router.put("/bus/:busNo", auth, allowRoles(["admin"]), async (req, res) => {
+  const bus = await Bus.findOneAndUpdate(
+    { busNo: req.params.busNo },
+    req.body,
+    { new: true },
+  );
 
-    if (!bus) {
-      return res.status(404).json({ message: "Bus not found" });
-    }
-
-    res.json(bus);
+  if (!bus) {
+    return res.status(404).json({ message: "Bus not found" });
   }
-);
+
+  res.json(bus);
+});
 
 /* =====================================================
    DELETE BUS (SAFE DELETE)
    ===================================================== */
-router.delete(
-  "/bus/:busNo",
-  auth,
-  allowRoles(["admin"]),
-  async (req, res) => {
-    const { busNo } = req.params;
+router.delete("/bus/:busNo", auth, allowRoles(["admin"]), async (req, res) => {
+  const { busNo } = req.params;
 
-    await Bus.deleteOne({ busNo });
+  await Bus.deleteOne({ busNo });
 
-    // Unassign driver
-    await Driver.updateMany(
-      { assignedBus: busNo },
-      { assignedBus: null }
-    );
+  // Unassign driver
+  await Driver.updateMany({ assignedBus: busNo }, { assignedBus: null });
 
-    // Unassign students
-    await Student.updateMany(
-      { assignedBus: busNo },
-      { assignedBus: null }
-    );
+  // Unassign students
+  await Student.updateMany({ assignedBus: busNo }, { assignedBus: null });
 
-    res.json({ message: "Bus removed successfully" });
-  }
-);
+  res.json({ message: "Bus removed successfully" });
+});
 
 /* =====================================================
    RESET BUS PROGRESS (Morning / Evening)
@@ -103,75 +80,58 @@ router.put(
   async (req, res) => {
     await Bus.findOneAndUpdate(
       { busNo: req.params.busNo },
-      { currentStopIndex: 0 }
+      { currentStopIndex: 0 },
     );
 
     res.json({ message: "Bus progress reset" });
-  }
+  },
 );
-
-
-
 
 // drivers
 
+router.post("/driver", auth, allowRoles(["admin"]), async (req, res) => {
+  try {
+    const { driverId, name, phone, licenseNo } = req.body;
 
-router.post(
-  "/driver",
-  auth,
-  allowRoles(["admin"]),
-  async (req, res) => {
-    try {
-      const { driverId, name, phone, licenseNo } = req.body;
-
-      // Check if driver already exists
-      const existing = await Driver.findOne({ driverId });
-      if (existing) {
-        return res.status(400).json({
-          message: "Driver already exists"
-        });
-      }
-
-      // 1️⃣ Create login account
-      const hashedPassword = await bcrypt.hash("123456", 10); // default password
-
-      const user = await User.create({
-        username: driverId,
-        password: hashedPassword,
-        role: "driver"
+    // Check if driver already exists
+    const existing = await Driver.findOne({ driverId });
+    if (existing) {
+      return res.status(400).json({
+        message: "Driver already exists",
       });
-
-      // 2️⃣ Create driver profile
-      const driver = await Driver.create({
-        userId: user._id,
-        driverId,
-        name,
-        phone,
-        licenseNo
-      });
-
-      res.json({
-        message: "Driver created successfully",
-        driver
-      });
-
-    } catch (err) {
-      res.status(400).json({ message: err.message });
     }
+
+    // 1️⃣ Create login account
+    const hashedPassword = await bcrypt.hash("123456", 10); // default password
+
+    const user = await User.create({
+      username: driverId,
+      password: hashedPassword,
+      role: "driver",
+    });
+
+    // 2️⃣ Create driver profile
+    const driver = await Driver.create({
+      userId: user._id,
+      driverId,
+      name,
+      phone,
+      licenseNo,
+    });
+
+    res.json({
+      message: "Driver created successfully",
+      driver,
+    });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
   }
-);
+});
 
-
-router.get(
-  "/driver",
-  auth,
-  allowRoles(["admin"]),
-  async (req, res) => {
-    const drivers = await Driver.find();
-    res.json(drivers);
-  }
-);
-
+router.get("/driver", auth, allowRoles(["admin"]), async (req, res) => {
+  const drivers = await Driver.find();
+  res.json(drivers);
+});
 
 router.put(
   "/driver/:driverId",
@@ -181,22 +141,17 @@ router.put(
     const driver = await Driver.findOneAndUpdate(
       { driverId: req.params.driverId },
       req.body,
-      { new: true }
+      { new: true },
     );
 
     res.json(driver);
-  }
+  },
 );
 
-router.get(
-  "/driver",
-  auth,
-  allowRoles(["admin"]),
-  async (req, res) => {
-    const drivers = await Driver.find();
-    res.json(drivers);
-  }
-);
+router.get("/driver", auth, allowRoles(["admin"]), async (req, res) => {
+  const drivers = await Driver.find();
+  res.json(drivers);
+});
 
 router.put(
   "/driver/:driverId",
@@ -205,20 +160,18 @@ router.put(
   async (req, res) => {
     try {
       const driver = await Driver.findOne({
-        driverId: req.params.driverId
+        driverId: req.params.driverId,
       });
 
       if (!driver) {
         return res.status(404).json({
-          message: "Driver not found"
+          message: "Driver not found",
         });
       }
 
-      if (req.body.name !== undefined)
-        driver.name = req.body.name;
+      if (req.body.name !== undefined) driver.name = req.body.name;
 
-      if (req.body.phone !== undefined)
-        driver.phone = req.body.phone;
+      if (req.body.phone !== undefined) driver.phone = req.body.phone;
 
       if (req.body.licenseNo !== undefined)
         driver.licenseNo = req.body.licenseNo;
@@ -227,118 +180,98 @@ router.put(
 
       res.json({
         message: "Driver updated successfully",
-        driver
+        driver,
       });
-
     } catch (err) {
       res.status(400).json({ message: err.message });
     }
-  }
+  },
 );
 
+router.put("/assign-driver", auth, allowRoles(["admin"]), async (req, res) => {
+  try {
+    const { driverId, busNo } = req.body;
 
+    const driver = await Driver.findOne({ driverId });
+    if (!driver) {
+      return res.status(404).json({
+        message: "Driver not found",
+      });
+    }
 
-router.put(
-  "/assign-driver",
-  auth,
-  allowRoles(["admin"]),
-  async (req, res) => {
-    try {
-      const { driverId, busNo } = req.body;
+    // 🔥 UNASSIGN CASE
+    if (!busNo) {
+      // Remove driver from all buses
+      await Bus.updateMany({ driverId }, { driverId: null });
 
-      const driver = await Driver.findOne({ driverId });
-      if (!driver) {
-        return res.status(404).json({
-          message: "Driver not found"
-        });
-      }
-
-      // 🔥 UNASSIGN CASE
-      if (!busNo) {
-
-        // Remove driver from all buses
-        await Bus.updateMany(
-          { driverId },
-          { driverId: null }
-        );
-
-        driver.assignedBus = null;
-        await driver.save();
-
-        return res.json({
-          message: "Driver unassigned successfully"
-        });
-      }
-
-      // 🔥 NORMAL ASSIGN CASE
-      const bus = await Bus.findOne({ busNo });
-      if (!bus) {
-        return res.status(404).json({
-          message: "Bus not found"
-        });
-      }
-
-      // Remove driver from old buses
-      await Bus.updateMany(
-        { driverId },
-        { driverId: null }
-      );
-
-      // Assign new bus
-      driver.assignedBus = busNo;
+      driver.assignedBus = null;
       await driver.save();
 
-      bus.driverId = driverId;
-      await bus.save();
-
-      res.json({
-        message: "Driver assigned successfully"
+      return res.json({
+        message: "Driver unassigned successfully",
       });
-
-    } catch (err) {
-      res.status(400).json({ message: err.message });
     }
-  }
-);
 
+    // 🔥 NORMAL ASSIGN CASE
+    const bus = await Bus.findOne({ busNo });
+    if (!bus) {
+      return res.status(404).json({
+        message: "Bus not found",
+      });
+    }
+
+    // Remove driver from old buses
+    await Bus.updateMany({ driverId }, { driverId: null });
+
+    // Assign new bus
+    driver.assignedBus = busNo;
+    await driver.save();
+
+    bus.driverId = driverId;
+    await bus.save();
+
+    res.json({
+      message: "Driver assigned successfully",
+    });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
 
 router.put(
   "/reset-driver-password/:driverId",
   auth,
   allowRoles(["admin"]),
   async (req, res) => {
-
     const { newPassword } = req.body;
 
     if (!newPassword) {
       return res.status(400).json({
-        message: "New password required"
+        message: "New password required",
       });
     }
 
     const driver = await Driver.findOne({
-      driverId: req.params.driverId
+      driverId: req.params.driverId,
     });
 
     if (!driver) {
       return res.status(404).json({
-        message: "Driver not found"
+        message: "Driver not found",
       });
     }
 
     const hashed = await bcrypt.hash(newPassword, 10);
 
     await User.findByIdAndUpdate(driver.userId, {
-      password: hashed
+      password: hashed,
     });
 
     res.json({
-      message: "Driver password reset successfully"
+      message: "Driver password reset successfully",
     });
-  }
+  },
 );
-
-
 
 router.delete(
   "/driver/:driverId",
@@ -352,15 +285,12 @@ router.delete(
 
       if (!driver) {
         return res.status(404).json({
-          message: "Driver not found"
+          message: "Driver not found",
         });
       }
 
       // Remove from bus
-      await Bus.updateMany(
-        { driverId },
-        { driverId: null }
-      );
+      await Bus.updateMany({ driverId }, { driverId: null });
 
       // Delete linked user
       await User.findByIdAndDelete(driver.userId);
@@ -369,97 +299,109 @@ router.delete(
       await Driver.deleteOne({ driverId });
 
       res.json({
-        message: "Driver removed successfully"
+        message: "Driver removed successfully",
       });
-
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
-  }
+  },
 );
 
-
-router.get(
-  "/leave",
-  auth,
-  allowRoles(["admin"]),
-  async (req, res) => {
-    try {
-      const leaves = await Leave.find().sort({ createdAt: -1 });
-      res.json(leaves);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
+router.get("/leave", auth, allowRoles(["admin"]), async (req, res) => {
+  try {
+    const leaves = await Leave.find().sort({ createdAt: -1 });
+    res.json(leaves);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
-);
-
+});
 
 // ADMIN APPROVE / REJECT LEAVE
-router.put(
-  "/leave/:leaveId",
-  auth,
-  allowRoles(["admin"]),
-  async (req, res) => {
-    const { status, adminRemark } = req.body;
+router.put("/leave/:leaveId", auth, allowRoles(["admin"]), async (req, res) => {
+  const { status, adminRemark } = req.body;
 
-    if (!["approved", "rejected"].includes(status)) {
-      return res.status(400).json({ message: "Invalid status" });
-    }
-
-    const leave = await Leave.findByIdAndUpdate(
-      req.params.leaveId,
-      { status, adminRemark },
-      { new: true }
-    );
-
-    if (!leave) {
-      return res.status(404).json({ message: "Leave not found" });
-    }
-
-    res.json({ message: "Leave updated successfully", leave });
+  if (!["approved", "rejected"].includes(status)) {
+    return res.status(400).json({ message: "Invalid status" });
   }
-);
 
+  const leave = await Leave.findByIdAndUpdate(
+    req.params.leaveId,
+    { status, adminRemark },
+    { new: true },
+  );
 
-
-router.post(
-  "/announcement",
-  auth,
-  allowRoles(["admin"]),
-  async (req, res) => {
-    try {
-      const announcement = await Announcement.create({
-        title: req.body.title,
-        message: req.body.message,
-        audience: req.body.audience || "all",
-        busNo: req.body.busNo || null
-      });
-
-      res.json({
-        message: "Announcement posted successfully",
-        announcement
-      });
-    } catch (err) {
-      res.status(400).json({ message: err.message });
-    }
+  if (!leave) {
+    return res.status(404).json({ message: "Leave not found" });
   }
-);
 
+  res.json({ message: "Leave updated successfully", leave });
+});
+
+router.post("/announcement", auth, allowRoles(["admin"]), async (req, res) => {
+  try {
+    const announcement = await Announcement.create({
+      title: req.body.title,
+      message: req.body.message,
+      audience: req.body.audience || "all",
+      busNo: req.body.busNo || null,
+    });
+
+    res.json({
+      message: "Announcement posted successfully",
+      announcement,
+    });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
 
 // ===============================
 // ADMIN ADD STUDENT
 // ===============================
+router.post("/student", auth, allowRoles(["admin"]), async (req, res) => {
+  try {
+    const student = await Student.create(req.body);
+    res.json(student);
+  } catch (error) {
+    res.status(400).json({ message: error.message });
+  }
+});
+
+// ===============================
+// ADMIN ADD STUDENTS IN BULK
+// ===============================
+
+const upload = multer({ dest: "uploads/" });
+
 router.post(
-  "/student",
+  "/upload-students",
   auth,
   allowRoles(["admin"]),
+  upload.single("file"),
   async (req, res) => {
-    try {
-      const student = await Student.create(req.body);
-      res.json(student);
-    } catch (error) {
-      res.status(400).json({ message: error.message });
+
+    console.log("FILE RECEIVED:", req.file);
+
+    if (!req.file) {
+      return res.status(400).json({ message: "No file uploaded" });
     }
+
+    const students = [];
+
+    fs.createReadStream(req.file.path)
+      .pipe(csv())
+      .on("data", (row) => students.push(row))
+      .on("end", async () => {
+
+        console.log("Students:", students);
+        console.log("Total rows:", students.length);
+
+        for (const s of students) {
+          console.log("Processing:", s.rollNumber);
+        }
+
+        res.json({ message: "Debug complete" });
+      });
   }
 );
 
@@ -467,22 +409,14 @@ router.post(
 // ===============================
 // ADMIN GET ALL STUDENTS
 // ===============================
-router.get(
-  "/student",
-  auth,
-  allowRoles(["admin"]),
-  async (req, res) => {
-    try {
-      const students = await Student.find();
-      res.json(students);
-    } catch (error) {
-      res.status(500).json({ message: error.message });
-    }
+router.get("/student", auth, allowRoles(["admin"]), async (req, res) => {
+  try {
+    const students = await Student.find();
+    res.json(students);
+  } catch (error) {
+    res.status(500).json({ message: error.message });
   }
-);
-
-
-
+});
 
 // ===============================
 // ADMIN GET SINGLE STUDENT
@@ -494,7 +428,7 @@ router.get(
   async (req, res) => {
     try {
       const student = await Student.findOne({
-        rollNumber: req.params.rollNumber
+        rollNumber: req.params.rollNumber,
       });
 
       if (!student) {
@@ -505,9 +439,8 @@ router.get(
     } catch (error) {
       res.status(500).json({ message: error.message });
     }
-  }
+  },
 );
-
 
 // ===============================
 // ADMIN UPDATE STUDENT DETAILS
@@ -519,7 +452,7 @@ router.put(
   async (req, res) => {
     try {
       const student = await Student.findOne({
-        rollNumber: req.params.rollNumber
+        rollNumber: req.params.rollNumber,
       });
 
       if (!student) {
@@ -527,21 +460,17 @@ router.put(
       }
 
       // Basic info updates
-      if (req.body.name !== undefined)
-        student.name = req.body.name;
+      if (req.body.name !== undefined) student.name = req.body.name;
 
       if (req.body.department !== undefined)
         student.department = req.body.department;
 
-      if (req.body.year !== undefined)
-        student.year = req.body.year;
+      if (req.body.year !== undefined) student.year = req.body.year;
 
-      if (req.body.phone !== undefined)
-        student.phone = req.body.phone;
+      if (req.body.phone !== undefined) student.phone = req.body.phone;
 
       // Bus-related changes (admin-only)
-      if (req.body.busStop !== undefined)
-        student.busStop = req.body.busStop;
+      if (req.body.busStop !== undefined) student.busStop = req.body.busStop;
 
       if (req.body.assignedBus !== undefined)
         student.assignedBus = req.body.assignedBus;
@@ -550,59 +479,52 @@ router.put(
 
       res.json({
         message: "Student details updated successfully",
-        student
+        student,
       });
     } catch (error) {
       res.status(400).json({ message: error.message });
     }
-  }
+  },
 );
 
+router.post("/trip", auth, allowRoles(["admin"]), async (req, res) => {
+  try {
+    const { busNo, direction, totalTime } = req.body;
 
-router.post(
-  "/trip",
-  auth,
-  allowRoles(["admin"]),
-  async (req, res) => {
-    try {
-      const { busNo, direction, totalTime } = req.body;
-
-      const bus = await Bus.findOne({ busNo });
-      if (!bus) {
-        return res.status(404).json({ message: "Bus not found" });
-      }
-
-      const totalDistance = bus.distances.reduce((a, b) => a + b, 0);
-      const timePerKm = totalTime / totalDistance;
-
-      let distances = [...bus.distances];
-      let stops = [...bus.stops];
-
-      if (direction === "return") {
-        distances.reverse();
-        stops.reverse();
-      }
-
-      const segmentTimes = distances.map(d => d * timePerKm);
-
-      const trip = await Trip.create({
-        busNo,
-        direction,
-        totalTime,
-        segmentTimes
-      });
-
-      res.json({
-        message: "Trip created",
-        trip,
-        stops
-      });
-    } catch (err) {
-      res.status(400).json({ message: err.message });
+    const bus = await Bus.findOne({ busNo });
+    if (!bus) {
+      return res.status(404).json({ message: "Bus not found" });
     }
-  }
-);
 
+    const totalDistance = bus.distances.reduce((a, b) => a + b, 0);
+    const timePerKm = totalTime / totalDistance;
+
+    let distances = [...bus.distances];
+    let stops = [...bus.stops];
+
+    if (direction === "return") {
+      distances.reverse();
+      stops.reverse();
+    }
+
+    const segmentTimes = distances.map((d) => d * timePerKm);
+
+    const trip = await Trip.create({
+      busNo,
+      direction,
+      totalTime,
+      segmentTimes,
+    });
+
+    res.json({
+      message: "Trip created",
+      trip,
+      stops,
+    });
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
 
 router.put(
   "/reset-student-password/:rollNumber",
@@ -620,7 +542,7 @@ router.put(
     const student = await Student.findOne({ rollNumber });
     if (!student || !student.userId) {
       return res.status(404).json({
-        message: "Student account not found"
+        message: "Student account not found",
       });
     }
 
@@ -630,15 +552,14 @@ router.put(
     // 3. Update user password
     await User.findByIdAndUpdate(student.userId, {
       password: hashed,
-      mustChangePassword: true   // optional but recommended
+      mustChangePassword: true, // optional but recommended
     });
 
     res.json({
-      message: "Password reset successfully"
+      message: "Password reset successfully",
     });
-  }
+  },
 );
-
 
 router.get("/announcement", async (req, res) => {
   const Announcement = require("../models/Announcement");
@@ -646,29 +567,22 @@ router.get("/announcement", async (req, res) => {
   res.json(data);
 });
 
+router.get("/feedback", auth, allowRoles(["admin"]), async (req, res) => {
+  try {
+    const { busNo, role, status } = req.query;
 
-router.get(
-  "/feedback",
-  auth,
-  allowRoles(["admin"]),
-  async (req, res) => {
-    try {
-      const { busNo, role, status } = req.query;
+    const filter = {};
+    if (busNo) filter.busNo = busNo;
+    if (role) filter.role = role;
+    if (status) filter.status = status;
 
-      const filter = {};
-      if (busNo) filter.busNo = busNo;
-      if (role) filter.role = role;
-      if (status) filter.status = status;
+    const feedbacks = await Feedback.find(filter).sort({ createdAt: -1 });
 
-      const feedbacks = await Feedback.find(filter)
-        .sort({ createdAt: -1 });
-
-      res.json(feedbacks);
-    } catch (err) {
-      res.status(500).json({ message: err.message });
-    }
+    res.json(feedbacks);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
   }
-);
+});
 
 // ===============================
 // ADMIN → MARK FEEDBACK AS REVIEWED
@@ -682,34 +596,29 @@ router.put(
       const feedback = await Feedback.findByIdAndUpdate(
         req.params.id,
         { status: "reviewed" },
-        { new: true }
+        { new: true },
       );
 
       if (!feedback) {
         return res.status(404).json({
-          message: "Feedback not found"
+          message: "Feedback not found",
         });
       }
 
       res.json({
         message: "Feedback marked as reviewed",
-        feedback
+        feedback,
       });
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
-  }
+  },
 );
 
-router.get(
-  "/trip-list",
-  auth,
-  allowRoles(["admin"]),
-  async (req, res) => {
-    const trips = await Trip.find().sort({ createdAt: -1 });
-    res.json(trips);
-  }
-);
+router.get("/trip-list", auth, allowRoles(["admin"]), async (req, res) => {
+  const trips = await Trip.find().sort({ createdAt: -1 });
+  res.json(trips);
+});
 
 router.get(
   "/dashboard-stats",
@@ -717,7 +626,6 @@ router.get(
   allowRoles(["admin"]),
   async (req, res) => {
     try {
-
       // Buses
       const totalBuses = await Bus.countDocuments();
 
@@ -729,34 +637,28 @@ router.get(
       // Students
       const totalStudents = await Student.countDocuments();
       const assignedStudents = await Student.countDocuments({
-        assignedBus: { $ne: null }
+        assignedBus: { $ne: null },
       });
       const unassignedStudents = await Student.countDocuments({
-        $or: [
-          { assignedBus: null },
-          { assignedBus: { $exists: false } }
-        ]
+        $or: [{ assignedBus: null }, { assignedBus: { $exists: false } }],
       });
 
       // Drivers
       const totalDrivers = await Driver.countDocuments();
       const assignedDrivers = await Driver.countDocuments({
-        assignedBus: { $ne: null }
+        assignedBus: { $ne: null },
       });
       const unassignedDrivers = await Driver.countDocuments({
-        $or: [
-          { assignedBus: null },
-          { assignedBus: { $exists: false } }
-        ]
+        $or: [{ assignedBus: null }, { assignedBus: { $exists: false } }],
       });
 
       // Feedback
       const totalFeedback = await Feedback.countDocuments();
       const reviewedFeedback = await Feedback.countDocuments({
-        status: "reviewed"
+        status: "reviewed",
       });
       const pendingFeedback = await Feedback.countDocuments({
-        status: { $ne: "reviewed" }
+        status: { $ne: "reviewed" },
       });
 
       res.json({
@@ -764,45 +666,28 @@ router.get(
           totalBuses,
           runningTrips,
           plannedTrips,
-          completedTrips
+          completedTrips,
         },
         students: {
           totalStudents,
           assignedStudents,
-          unassignedStudents
+          unassignedStudents,
         },
         drivers: {
           totalDrivers,
           assignedDrivers,
-          unassignedDrivers
+          unassignedDrivers,
         },
         feedback: {
           totalFeedback,
           reviewedFeedback,
-          pendingFeedback
-        }
+          pendingFeedback,
+        },
       });
-
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
-  }
+  },
 );
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
 
 module.exports = router;

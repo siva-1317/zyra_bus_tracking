@@ -64,9 +64,34 @@ router.get("/profile", auth, allowRoles(["student"]), async (req, res) => {
   }
 });
 
+// ===============================
+// STUDENT GET AVAILABLE ROUTES
+// ===============================
+router.get("/routes", auth, allowRoles(["student"]), async (req, res) => {
+  try {
+    const buses = await Bus.find(
+      { availableSeats: { $gt: 0 } }, // only buses with seats
+      "busNo routeName stops availableSeats"
+    );
+
+    res.json(buses);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+
+
+
 router.post("/select-stop", auth, allowRoles(["student"]), async (req, res) => {
   try {
-    const { busStop } = req.body;
+    const { busNo, busStop } = req.body;
+
+    if (!busNo || !busStop) {
+      return res.status(400).json({
+        message: "Route and Stop are required",
+      });
+    }
 
     const student = await Student.findOne({ userId: req.user.id });
     if (!student) {
@@ -79,23 +104,44 @@ router.post("/select-stop", auth, allowRoles(["student"]), async (req, res) => {
       });
     }
 
-    const bus = await Bus.findOne({
-      stops: { $regex: new RegExp(`^${busStop}$`, "i") },
-    });
+    const bus = await Bus.findOne({ busNo });
     if (!bus) {
+      return res.status(404).json({ message: "Bus not found" });
+    }
+
+    // Check if stop exists in that route
+    const stopExists = bus.stops.find(
+      (stop) =>
+        stop.stopName.trim().toLowerCase() ===
+        busStop.trim().toLowerCase()
+    );
+
+    if (!stopExists) {
       return res.status(404).json({
-        message: "No bus available for this stop",
+        message: "Invalid stop for selected route",
       });
     }
 
-    student.busStop = busStop;
+    if (bus.availableSeats <= 0) {
+      return res.status(400).json({
+        message: "Bus is full",
+      });
+    }
+
+    // Assign
+    student.busStop = stopExists.stopName;
     student.assignedBus = bus.busNo;
+
+    bus.availableSeats -= 1;
+
     await student.save();
+    await bus.save();
 
     res.json({
       message: "Bus assigned successfully",
       busNo: bus.busNo,
     });
+
   } catch (err) {
     res.status(500).json({ message: err.message });
   }

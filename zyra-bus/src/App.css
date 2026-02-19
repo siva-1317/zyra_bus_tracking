@@ -70,3 +70,113 @@
   font-weight: 600;
   color: blueviolet;
 }
+
+.feedback-btn {
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  border-radius: 100%;
+  width: 55px;
+  height: 55px;
+  font-size: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  box-shadow: 0 4px 10px rgba(0,0,0,0.3);
+  z-index: 1000;
+  background-color: rgba(199, 139, 255, 0.571);
+}
+
+/* Floating Button */
+.track-btn {
+  position: fixed;
+  bottom: 100px;
+  right: 20px;
+  border-radius: 100%;
+  width: 60px;
+  height: 60px;
+  font-size: 22px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 1000;
+  background-color: rgba(199, 139, 255, 0.571);
+}
+
+/* Timeline Container */
+.timeline-container {
+  position: relative;
+  padding-left: 120px;
+}
+
+/* Background Vertical Line */
+.timeline-line {
+  position: absolute;
+  left: 110px;
+  top: 0;
+  bottom: 0;
+  width: 6px;
+  background: #ddd;
+  border-radius: 10px;
+}
+
+/* Progress Vertical Line */
+.timeline-progress {
+  position: absolute;
+  left: 110px;
+  top: 0;
+  width: 6px;
+  background: #6c63ff;
+  border-radius: 10px;
+  transition: height 0.4s ease;
+}
+
+/* Timeline Item */
+.timeline-item {
+  position: relative;
+  margin-bottom: 50px;
+  display: flex;
+  align-items: center;
+}
+
+/* Time */
+.time {
+  width: 100px;
+  text-align: right;
+  margin-right: 20px;
+  color: #6c63ff;
+}
+
+/* Stop Name */
+.stop-name {
+  margin-left: 50px;
+  font-weight: 500;
+}
+
+/* Circle */
+.circle {
+  position: absolute;
+  left: 103px;
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: #ccc;
+  border: 3px solid white;
+}
+
+/* Completed */
+.circle.completed {
+  background: green;
+}
+
+/* Current */
+.circle.current {
+  background: rgb(255, 0, 0);
+  transform: scale(1.3);
+  box-shadow: 1px 2px 5px rgb(255, 0, 0);
+}
+
+/* Next */
+.circle.next {
+  background: rgba(255, 111, 0, 0.577);
+}

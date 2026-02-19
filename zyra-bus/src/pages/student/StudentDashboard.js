@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from "react";
 import Header from "../../components/Header";
-import { Container, Row, Col, Card } from "react-bootstrap";
+import { Container, Row, Col, Card, Modal, Form, Button } from "react-bootstrap";
 import API from "../../api";
 
 function StudentDashboard() {
@@ -9,6 +9,79 @@ function StudentDashboard() {
   const [driver, setDriver] = useState(null);
   const [stopDetails, setStopDetails] = useState(null);
   const [time, setTime] = useState(new Date());
+  const [announcement,setAnnouncement] = useState([]);
+
+  const [showModal, setShowModal] = useState(false);
+  const [routes, setRoutes] = useState([]);
+const [selectedRoute, setSelectedRoute] = useState("");
+const [selectedStop, setSelectedStop] = useState("");
+
+  const [stopLoading, setStopLoading] = useState(false);
+
+  useEffect(() => {
+  if (student && !student.busStop) {
+    setShowModal(true);
+  }
+}, [student]);
+
+const handleStopSubmit = async () => {
+  if (!selectedRoute || !selectedStop) return;
+
+  try {
+    setStopLoading(true);
+
+    await API.post("/student/select-stop", {
+      busNo: selectedRoute,
+      busStop: selectedStop
+    });
+
+    // Refresh profile immediately
+    const res = await API.get("/student/profile");
+
+    setStudent(res.data.student);
+    setDriver(res.data.driver);
+    setBus(res.data.bus);
+    setStopDetails(res.data.stopDetails);
+
+    setShowModal(false);
+
+  } catch (err) {
+    alert(err.response?.data?.message || "Error assigning stop");
+  }
+
+  setStopLoading(false);
+};
+
+
+useEffect(() => {
+  if (showModal) {
+    fetchRoutes();
+  }
+}, [showModal]);
+
+const fetchRoutes = async () => {
+  try {
+    const res = await API.get("/student/routes");
+    setRoutes(res.data);
+  } catch (err) {
+    console.error(err);
+  }
+};
+const selectedBus = routes.find(
+  (route) => route.busNo === selectedRoute
+);
+
+const stops = selectedBus ? selectedBus.stops : [];
+
+
+
+
+
+
+
+
+
+
 
   /* ================= FETCH ================= */
 
@@ -28,6 +101,19 @@ function StudentDashboard() {
     fetchData();
   }, []);
 
+  useEffect(() => {
+    const announcementData = async () => {
+      try{
+        const res = await API.get("/admin/announcement");
+        setAnnouncement(res.data || []);
+      }catch (err)
+      {
+        console.error("Error fetching Announcement DATA :", err);
+      }
+    };
+    announcementData();
+  }, []);
+ 
   /* ================= LIVE CLOCK ================= */
 
   useEffect(() => {
@@ -43,37 +129,84 @@ function StudentDashboard() {
   const currentHours = time.getHours();
   const currentMinutes = time.getMinutes();
   const currentTime = currentHours * 60 + currentMinutes;
-  const isMorning = currentHours < 12 || currentHours >= 19;
-  const convertToMinutes = (timeString) => {
-    if (!timeString) return 0;
+  const isMorning = currentHours >= 5 && currentHours < 12;
 
-    const [hours, minutes] = timeString.split(":").map(Number);
-    return hours * 60 + minutes;
-  };
+const convertToMinutes = (timeValue) => {
+  if (!timeValue) return null;
 
-  let busStartTime = 0;
-  let busEndTime = 0;
-  let studentStopTime = "-";
+  if (typeof timeValue === "number") return timeValue;
 
-  if (bus && stopDetails) {
-    if (isMorning) {
-      busStartTime = bus.tripStartMorning || 0;
-      busEndTime = bus.tripEndMorning || 0;
-      studentStopTime = stopDetails.morningTime || "-";
-    } else {
-      busStartTime = bus.tripStartEvening || 0;
-      busEndTime = bus.tripEndEvening || 0;
-      studentStopTime = stopDetails.eveningTime || "-";
+  if (typeof timeValue === "string") {
+    const time = timeValue.trim();
+
+    // Handle 12-hour format with AM/PM
+    const match = time.match(/^(\d{1,2}):(\d{2})\s?(AM|PM)$/i);
+
+    if (match) {
+      let hours = parseInt(match[1]);
+      const minutes = parseInt(match[2]);
+      const period = match[3].toUpperCase();
+
+      if (period === "PM" && hours !== 12) {
+        hours += 12;
+      }
+
+      if (period === "AM" && hours === 12) {
+        hours = 0;
+      }
+
+      return hours * 60 + minutes;
+    }
+
+    // Handle 24-hour format
+    const parts = time.split(":");
+    if (parts.length === 2) {
+      const hours = parseInt(parts[0]);
+      const minutes = parseInt(parts[1]);
+
+      if (!isNaN(hours) && !isNaN(minutes)) {
+        return hours * 60 + minutes;
+      }
     }
   }
 
+  return null;
+};
+
+
+
+let busStartTime = null;
+let busEndTime = null;
+let studentStopTime = null;
+
+if (bus && stopDetails) {
+  if (isMorning) {
+    busStartTime = convertToMinutes(bus.tripStartMorning);
+    busEndTime = convertToMinutes(bus.tripEndMorning);
+    studentStopTime = stopDetails.morningTime;
+  } else {
+    busStartTime = convertToMinutes(bus.tripStartEvening);
+    busEndTime = convertToMinutes(bus.tripEndEvening);
+    studentStopTime = stopDetails.eveningTime;
+  }
+}
+
+
   const stopTimeInMinutes = convertToMinutes(studentStopTime);
 
-  const timeDifference = stopTimeInMinutes - currentTime;
+  let timeDifference = null;
 
-  const track =
-    convertToMinutes(busStartTime) < currentTime &&
-    currentTime < convertToMinutes(busEndTime);
+if (stopTimeInMinutes !== null) {
+  timeDifference = stopTimeInMinutes - currentTime;
+}
+
+
+ const track =
+  busStartTime !== null &&
+  busEndTime !== null &&
+  currentTime >= busStartTime &&
+  currentTime <= busEndTime;
+
 
   // Build stop list with correct time
   const stopsWithTime = bus?.stops?.map((stop) => {
@@ -108,6 +241,13 @@ function StudentDashboard() {
   }
 
   /* ================= UI ================= */
+
+
+  console.log("Current:", currentTime);
+console.log("Bus Start:", busStartTime);
+console.log("Bus End:", busEndTime);
+console.log("Track:", track);
+
 
   return (
     <div>
@@ -171,7 +311,10 @@ function StudentDashboard() {
           <Card.Body>
             <h5>Where is my Bus</h5>
             <hr />
-            {track ? (
+            {
+              
+              
+              track ? (
               <>
                 <p>
                   {timeDifference > 0 &&
@@ -264,10 +407,79 @@ function StudentDashboard() {
           <Card.Body>
             <h5>Announcements</h5>
             <hr />
-            <p>No new announcements</p>
+            {announcement.length === 0 ? (
+      <p>No announcements available</p>
+    ) : (
+      announcement.map((item, index) => (
+        <div key={index} className="mb-3">
+          <h6>{item.title}</h6>
+          <p>{item.message}</p>
+          <small className="text-muted">
+            {new Date(item.createdAt).toLocaleString()}
+          </small>
+          <hr />
+        </div>
+      ))
+    )}
           </Card.Body>
         </Card>
       </Container>
+
+<Modal show={showModal} backdrop="static" centered>
+  <Modal.Header>
+    <Modal.Title>Select Your Route & Stop</Modal.Title>
+  </Modal.Header>
+
+  <Modal.Body>
+    <Form>
+
+      {/* Route Dropdown */}
+      <Form.Select
+        className="mb-3"
+        value={selectedRoute}
+        onChange={(e) => {
+          setSelectedRoute(e.target.value);
+          setSelectedStop("");
+        }}
+      >
+        <option value="">Select Route</option>
+        {routes.map((route) => (
+          <option key={route.busNo} value={route.busNo}>
+            {route.routeName} ({route.availableSeats} seats left)
+          </option>
+        ))}
+      </Form.Select>
+
+      {/* Stop Dropdown */}
+      {selectedRoute && (
+        <Form.Select
+          value={selectedStop}
+          onChange={(e) => setSelectedStop(e.target.value)}
+        >
+          <option value="">Select Stop</option>
+          {stops.map((stop, index) => (
+            <option key={index} value={stop.stopName}>
+              {stop.stopName}
+            </option>
+          ))}
+        </Form.Select>
+      )}
+
+    </Form>
+  </Modal.Body>
+
+  <Modal.Footer>
+    <Button
+      variant="primary"
+      disabled={!selectedRoute || !selectedStop || stopLoading}
+      onClick={handleStopSubmit}
+    >
+      {stopLoading ? "Assigning..." : "Confirm Selection"}
+    </Button>
+  </Modal.Footer>
+</Modal>
+
+
     </div>
   );
 }

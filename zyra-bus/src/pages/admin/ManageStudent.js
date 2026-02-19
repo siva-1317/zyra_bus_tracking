@@ -12,20 +12,8 @@ import {
 import API from "../../api";
 
 export default function ManageStudent() {
-  const [students, setStudents] = useState([]);
-  const [buses, setBuses] = useState([]);
 
-
-  // 🔹 NEW STUDENT FORM
-  const [newStudent, setNewStudent] = useState({
-    rollNumber: "",
-    name: "",
-    department: "",
-    year: "",
-    phone: "",
-  });
-
-  const [search, setSearch] = useState("");
+   const [search, setSearch] = useState("");
   const [filterDept, setFilterDept] = useState("");
   const [filterBusAssigned, setFilterBusAssigned] = useState("");
   const [filterBusNo, setFilterBusNo] = useState("");
@@ -45,6 +33,52 @@ export default function ManageStudent() {
       fetchBuses();
   }, []);
 
+
+
+
+
+
+  //modals popup
+  const [addStudentModal,setAddStudentModal] = useState(false);
+  const studentModalShow = () => setAddStudentModal(true);
+  const studentModalClose = () => setAddStudentModal(false);
+
+  const [studentFile,setStudentFile] = useState(null);
+  const handleUpload = async () => {
+    if (!studentFile) return alert("Select a file");
+
+    const formData = new FormData();
+    formData.append("file", studentFile);
+    try{
+    await API.post("/admin/upload-students", formData, {
+  headers: {
+    "Content-Type": "multipart/form-data",
+  },
+});
+
+      alert("upload Successfully");
+      fetchStudents();
+
+    }catch (err) {
+      alert("Upload Failed ❌");
+    }
+
+  }
+
+  const [students, setStudents] = useState([]);
+  const [buses, setBuses] = useState([]);
+
+
+  // 🔹 NEW STUDENT FORM
+  const [newStudent, setNewStudent] = useState({
+    rollNumber: "",
+    name: "",
+    department: "",
+    year: "",
+    phone: "",
+  });
+
+ 
 
   const fetchBuses = async () => {
   const res = await API.get("/admin/bus");
@@ -126,6 +160,22 @@ export default function ManageStudent() {
     setNewPassword("");
   };
 
+  const handleDelete = async () => {
+    const confirmDelete = window.confirm("Are you sure to delete ?");
+    if(!confirmDelete) return;
+    await API.delete(`/admin/delete-student/${selectedStudent.rollNumber}`);
+  }
+
+
+
+
+
+
+
+
+
+
+
   return (
     <div>
       <h3 className="mb-3">Manage Students</h3>
@@ -191,6 +241,9 @@ export default function ManageStudent() {
 
         <Button className="mt-3" onClick={handleAddStudent}>
           Add Student
+        </Button>
+        <Button className="mt-3" onClick={studentModalShow} >
+        Add Bulk Students
         </Button>
       </Card>
 
@@ -336,6 +389,18 @@ export default function ManageStudent() {
                   }
                 />
               </Form.Group>
+              <Form.Group className="mb-2">
+                <Form.Label>Bus Stop</Form.Label>
+                <Form.Control
+                  value={selectedStudent.busStop || ""}
+                  onChange={(e) =>
+                    setSelectedStudent({
+                      ...selectedStudent,
+                      busStop: e.target.value,
+                    })
+                  }
+                />
+              </Form.Group>
 
               <Form.Group className="mb-2">
                 <Form.Label>Assign Bus</Form.Label>
@@ -380,13 +445,34 @@ export default function ManageStudent() {
               <Button variant="primary" onClick={handleUpdate}>
                 Update Student
               </Button>
+              <Button variant="danger" onClick={handleDelete}>
+                  Delete
+              </Button>
             </>
           )}
         </Modal.Body>
       </Modal>
 
-      {/* Modal remains same */}
-      {/* (Your existing modal code unchanged below) */}
+      <Modal show={addStudentModal} onHide={studentModalClose} centered>
+      <Modal.Header closeButton>
+         <h4>Add Students </h4> 
+      </Modal.Header>
+      <Modal.Body>
+          <Form>
+            <Form.Group>
+              <Form.Label>upload the csv file here</Form.Label>
+              <Form.Control type="file" size="sm" accept=".csv"
+              onChange={(e) => setStudentFile(e.target.files[0])}/>
+            </Form.Group>
+            <Button onClick={handleUpload} className="mt-3">Upload</Button>
+          </Form>
+
+      </Modal.Body>
+
+
+      </Modal>
+
+  
     </div>
   );
-}
+  }
