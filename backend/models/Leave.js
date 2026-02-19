@@ -1,20 +1,23 @@
 const mongoose = require("mongoose");
 
 const leaveSchema = new mongoose.Schema({
-  driverId: {
-    type: String,
-    required: true
-  },
+driver: {
+  type: mongoose.Schema.Types.ObjectId,
+  ref: "Driver",
+  required: true
+},
   busNo: String,
 
   fromDate: Date,
   toDate: Date,
   reason: String,
+  fromTime: String,
+  toTime: String,
 
   status: {
     type: String,
-    enum: ["pending", "approved", "rejected"],
-    default: "pending"
+    enum: ["waiting", "approved", "rejected"],
+    default: "waiting"
   },
 
   adminRemark: String

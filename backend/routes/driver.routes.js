@@ -4,6 +4,7 @@ const router = express.Router();
 const Driver = require("../models/Driver");
 const Bus = require("../models/Bus");
 const Trip = require("../models/Trip");
+const Announcement = require("../models/Announcement");
 const Feedback = require("../models/Feedback");
 const auth = require("../middleware/auth.middleware");
 const allowRoles = require("../middleware/role.middleware");
@@ -63,19 +64,93 @@ router.post(
       }
 
       const leave = await Leave.create({
-        driverId: driver.driverId,
+        driver: driver._id,
         busNo: driver.assignedBus,
         fromDate: req.body.fromDate,
         toDate: req.body.toDate,
+        fromTime: req.body.fromTime,
+        toTime: req.body.toTime,
         reason: req.body.reason
       });
 
-      res.json({ message: "Leave applied successfully", leave });
+      res.json({
+        message: "Leave applied successfully",
+        leave
+      });
+
     } catch (error) {
       res.status(400).json({ message: error.message });
     }
   }
 );
+
+
+router.get(
+  "/leave",
+  auth,
+  allowRoles(["driver"]),
+  async (req, res) => {
+    try {
+      const driver = await Driver.findOne({ userId: req.user.id });
+
+      if (!driver) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const leaves = await Leave.find({
+        driver: driver._id
+      })
+        .sort({ createdAt: -1 });
+
+      res.json(leaves);
+
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
+
+router.delete(
+  "/leave/:id",
+  auth,
+  allowRoles(["driver"]),
+  async (req, res) => {
+    try {
+      const driver = await Driver.findOne({ userId: req.user.id });
+
+      if (!driver) {
+        return res.status(404).json({ message: "Driver not found" });
+      }
+
+      const leave = await Leave.findById(req.params.id);
+
+      if (!leave) {
+        return res.status(404).json({ message: "Leave not found" });
+      }
+
+      // Ensure driver owns this leave
+      if (leave.driverId !== driver.driverId) {
+        return res.status(403).json({ message: "Unauthorized" });
+      }
+
+      // Optional: allow delete only if waiting
+      if (leave.status !== "waiting") {
+        return res.status(400).json({
+          message: "Only waiting leave can be cancelled"
+        });
+      }
+
+      await Leave.findByIdAndDelete(req.params.id);
+
+      res.json({ message: "Leave cancelled successfully" });
+
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
 
 
 router.get(

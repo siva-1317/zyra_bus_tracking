@@ -307,35 +307,67 @@ router.delete(
   },
 );
 
-router.get("/leave", auth, allowRoles(["admin"]), async (req, res) => {
-  try {
-    const leaves = await Leave.find().sort({ createdAt: -1 });
-    res.json(leaves);
-  } catch (error) {
-    res.status(500).json({ message: error.message });
+router.get(
+  "/leave",
+  auth,
+  allowRoles(["admin"]),
+  async (req, res) => {
+    try {
+      const leaves = await Leave.find()
+        .populate("driver", "name driverId phone")
+        .sort({ createdAt: -1 });
+
+      res.json(leaves);
+
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
   }
-});
+);
+
 
 // ADMIN APPROVE / REJECT LEAVE
-router.put("/leave/:leaveId", auth, allowRoles(["admin"]), async (req, res) => {
-  const { status, adminRemark } = req.body;
+router.put(
+  "/leave/:id",
+  auth,
+  allowRoles(["admin"]),
+  async (req, res) => {
+    try {
+      const { status, adminRemark } = req.body;
 
-  if (!["approved", "rejected"].includes(status)) {
-    return res.status(400).json({ message: "Invalid status" });
+      if (!["approved", "rejected"].includes(status)) {
+        return res.status(400).json({
+          message: "Invalid status"
+        });
+      }
+
+      const leave = await Leave.findById(req.params.id);
+
+      if (!leave) {
+        return res.status(404).json({
+          message: "Leave not found"
+        });
+      }
+
+      leave.status = status;
+
+      if (adminRemark) {
+        leave.adminRemark = adminRemark;
+      }
+
+      await leave.save();
+
+      res.json({
+        message: `Leave ${status} successfully`,
+        leave
+      });
+
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
   }
+);
 
-  const leave = await Leave.findByIdAndUpdate(
-    req.params.leaveId,
-    { status, adminRemark },
-    { new: true },
-  );
-
-  if (!leave) {
-    return res.status(404).json({ message: "Leave not found" });
-  }
-
-  res.json({ message: "Leave updated successfully", leave });
-});
 
 router.post("/announcement", auth, allowRoles(["admin"]), async (req, res) => {
   try {

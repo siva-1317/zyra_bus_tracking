@@ -104,7 +104,7 @@ const stops = selectedBus ? selectedBus.stops : [];
   useEffect(() => {
     const announcementData = async () => {
       try{
-        const res = await API.get("/admin/announcement");
+        const res = await API.get("/student/announcement");
         setAnnouncement(res.data || []);
       }catch (err)
       {
@@ -266,7 +266,7 @@ console.log("Track:", track);
                   <strong>Name:</strong> {student?.name}
                 </p>
                 <p>
-                  <strong>Roll:</strong> {student?.rollNumber}
+                  <strong>Roll Number:</strong> {student?.rollNumber}
                 </p>
                 <p>
                   <strong>Department:</strong> {student?.department}

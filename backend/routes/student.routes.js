@@ -7,6 +7,7 @@ const Student = require("../models/Student");
 const Bus = require("../models/Bus");
 const Trip = require("../models/Trip");
 const Feedback = require("../models/Feedback");
+const Announcement = require("../models/Announcement");
 const auth = require("../middleware/auth.middleware");
 const allowRoles = require("../middleware/role.middleware");
 const Driver = require("../models/Driver");
@@ -258,6 +259,25 @@ router.get(
       res.status(500).json({ message: error.message });
     }
   },
+);
+
+router.get(
+  "/announcement",
+  auth,
+  allowRoles(["student"]),
+  async (req, res) => {
+    const student = await Student.findOne({ userId: req.user.id });
+
+    const announcements = await Announcement.find({
+      audience: { $in: ["all", "students"] },
+      $or: [
+        { busNo: null },
+        { busNo: student.assignedBus }
+      ]
+    }).sort({ createdAt: -1 });
+
+    res.json(announcements);
+  }
 );
 
 router.put(

@@ -39,6 +39,7 @@ export default function Leave() {
         <thead>
           <tr>
             <th>Driver</th>
+            <th>Driver Name</th>
             <th>From</th>
             <th>To</th>
             <th>Reason</th>
@@ -51,8 +52,9 @@ export default function Leave() {
           {leaves.map((leave, index) => (
             <tr key={index}>
               <td>{leave.driver?.driverId}</td>
-              <td>{leave.fromDate}</td>
-              <td>{leave.toDate}</td>
+              <td>{leave.driver?.name}</td>
+              <td>{new Date(leave.fromDate).toLocaleDateString()}</td>
+              <td>{new Date(leave.toDate).toLocaleDateString()}</td>
               <td>{leave.reason}</td>
               <td>{leave.status || "Pending"}</td>
               <td>
