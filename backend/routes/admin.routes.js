@@ -608,13 +608,17 @@ router.get("/feedback", auth, allowRoles(["admin"]), async (req, res) => {
     if (role) filter.role = role;
     if (status) filter.status = status;
 
-    const feedbacks = await Feedback.find(filter).sort({ createdAt: -1 });
+    const feedbacks = await Feedback.find(filter)
+      .populate("userId", "username email")
+      .sort({ createdAt: -1 });
 
     res.json(feedbacks);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
 });
+
+
 
 // ===============================
 // ADMIN → MARK FEEDBACK AS REVIEWED
@@ -625,27 +629,26 @@ router.put(
   allowRoles(["admin"]),
   async (req, res) => {
     try {
-      const feedback = await Feedback.findByIdAndUpdate(
-        req.params.id,
-        { status: "reviewed" },
-        { new: true },
-      );
+      const feedback = await Feedback.findById(req.params.id);
 
       if (!feedback) {
-        return res.status(404).json({
-          message: "Feedback not found",
-        });
+        return res.status(404).json({ message: "Feedback not found" });
       }
+
+      feedback.status = "reviewed";
+      await feedback.save();
 
       res.json({
         message: "Feedback marked as reviewed",
         feedback,
       });
+
     } catch (err) {
       res.status(500).json({ message: err.message });
     }
-  },
+  }
 );
+
 
 router.get("/trip-list", auth, allowRoles(["admin"]), async (req, res) => {
   const trips = await Trip.find().sort({ createdAt: -1 });

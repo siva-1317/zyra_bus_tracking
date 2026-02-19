@@ -3,7 +3,6 @@ import { Table, Button } from "react-bootstrap";
 import API from "../../api";
 
 export default function Feedback() {
-
   const [feedbacks, setFeedbacks] = useState([]);
 
   const fetchFeedbacks = async () => {
@@ -19,17 +18,15 @@ export default function Feedback() {
     fetchFeedbacks();
   }, []);
 
-  const handleReview = async (id, status) => {
-    try {
-      await API.put(`/admin/feedback/${id}/review`, {
-        status
-      });
+const handleReview = async (id) => {
+  try {
+    await API.put(`/admin/feedback/${id}/review`);
+    fetchFeedbacks();
+  } catch (error) {
+    console.error(error);
+  }
+};
 
-      fetchFeedbacks(); // Refresh list
-    } catch (error) {
-      console.error(error);
-    }
-  };
 
   return (
     <div>
@@ -48,26 +45,21 @@ export default function Feedback() {
         <tbody>
           {feedbacks.map((f, index) => (
             <tr key={index}>
-              <td>{f.user?.username}</td>
+              <td>{f.userId?.username}</td>
               <td>{f.message}</td>
               <td>{f.status || "Pending"}</td>
               <td>
-                <Button
-                  size="sm"
-                  variant="success"
-                  className="me-2"
-                  onClick={() => handleReview(f._id, "approved")}
-                >
-                  Approve
-                </Button>
-
-                <Button
-                  size="sm"
-                  variant="danger"
-                  onClick={() => handleReview(f._id, "rejected")}
-                >
-                  Reject
-                </Button>
+                {f.status === "new" ? (
+                  <Button
+                    size="sm"
+                    variant="primary"
+                    onClick={() => handleReview(f._id)}
+                  >
+                    Mark as Reviewed
+                  </Button>
+                ) : (
+                  <span className="text-success">Reviewed</span>
+                )}
               </td>
             </tr>
           ))}

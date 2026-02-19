@@ -29,7 +29,7 @@ function DriverDashboard() {
   const feedBackModelClose = () => setFeedBackModel(false);
   const feedBackModelShow = () => setFeedBackModel(true);
 
-  const [rating, setRating] = useState(0);
+
 
   const [show, setShow] = useState(false);
 
@@ -151,6 +151,45 @@ function DriverDashboard() {
       alert(err.response?.data?.message || "Failed to delete leave");
     }
   };
+
+const [category, setCategory] = useState("general");
+const [message, setMessage] = useState("");
+const [rating, setRating] = useState(3);
+const [loadingFeedback, setLoadingFeedback] = useState(false);
+
+const handleFeedbackSubmit = async (e) => {
+  e.preventDefault();
+
+  try {
+    setLoadingFeedback(true);
+
+    await API.post("/driver/feedback", {
+      busNo: bus?.busNo,
+      rating,
+      category: category.toLowerCase(),
+      message
+    });
+
+    alert("Feedback submitted successfully");
+
+    setCategory("general");
+    setMessage("");
+    setRating(3);
+
+  } catch (err) {
+    alert(err.response?.data?.message || "Failed to submit feedback");
+  } finally {
+    setLoadingFeedback(false);
+  }
+};
+
+
+
+
+
+
+
+
 
   // ===========================================frontend===================================================================
 
@@ -446,53 +485,62 @@ function DriverDashboard() {
           <h4>Feed Back Form</h4>
         </Modal.Header>
         <Modal.Body>
-          <Form>
-            <Form.Group className="mb-3">
-              <Form.Label>Category</Form.Label>
-              <Form.Select>
-                <option></option>
-                <option>Driver</option>
-                <option>Bus</option>
-                <option>Route</option>
-                <option>Timing</option>
-                <option>General</option>
-              </Form.Select>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Rate Us</Form.Label>
-              <div>
-                {[1, 2, 3, 4, 5].map((star) => (
-                  <i
-                    key={star}
-                    className={`bi ${
-                      star <= rating ? "bi-star-fill text-warning" : "bi-star"
-                    }`}
-                    style={{
-                      fontSize: "25px",
-                      cursor: "pointer",
-                      marginRight: "5px",
-                    }}
-                    onClick={() => setRating(star)}
-                  ></i>
-                ))}
-              </div>
-            </Form.Group>
-            <Form.Group className="mb-3">
-              <Form.Label>Message</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={3}
-                placeholder="enter the feedback"
-              ></Form.Control>
-            </Form.Group>
-            <button
-              type="submit"
-              className="btn w-100 mt-4"
-              style={{ backgroundColor: "blueviolet", color: "white" }}
-            >
-              submit
-            </button>
-          </Form>
+         <Form onSubmit={handleFeedbackSubmit}>
+  <Form.Group className="mb-3">
+    <Form.Label>Category</Form.Label>
+    <Form.Select
+      value={category}
+      onChange={(e) => setCategory(e.target.value)}
+    >
+      <option value="driver">Driver</option>
+      <option value="bus">Bus</option>
+      <option value="route">Route</option>
+      <option value="timing">Timing</option>
+      <option value="general">General</option>
+    </Form.Select>
+  </Form.Group>
+
+  <Form.Group className="mb-3">
+    <Form.Label>Rate Us</Form.Label>
+    <div>
+      {[1, 2, 3, 4, 5].map((star) => (
+        <i
+          key={star}
+          className={`bi ${
+            star <= rating ? "bi-star-fill text-warning" : "bi-star"
+          }`}
+          style={{
+            fontSize: "25px",
+            cursor: "pointer",
+            marginRight: "5px",
+          }}
+          onClick={() => setRating(star)}
+        ></i>
+      ))}
+    </div>
+  </Form.Group>
+
+  <Form.Group className="mb-3">
+    <Form.Label>Message</Form.Label>
+    <Form.Control
+      as="textarea"
+      rows={3}
+      value={message}
+      onChange={(e) => setMessage(e.target.value)}
+      required
+    />
+  </Form.Group>
+
+  <button
+    type="submit"
+    disabled={loadingFeedback}
+    className="btn w-100 mt-4"
+    style={{ backgroundColor: "blueviolet", color: "white" }}
+  >
+    {loadingFeedback ? "Submitting..." : "Submit"}
+  </button>
+</Form>
+
         </Modal.Body>
       </Modal>
 
