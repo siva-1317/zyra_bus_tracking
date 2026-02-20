@@ -355,30 +355,91 @@ router.post("/trip/:id/location", async (req, res) => {
 });
 
 
-router.get("/active-trip", auth, allowRoles(["driver"]), async (req, res) => {
-  try {
-    const driver = await Driver.findOne({ userId: req.user.id });
+router.get(
+  "/active-trip",
+  auth,
+  allowRoles(["driver"]),
+  async (req, res) => {
+    try {
+      const driver = await Driver.findOne({ userId: req.user.id });
 
-    if (!driver || !driver.assignedBus) {
-      return res.status(400).json({ message: "No bus assigned" });
+      if (!driver || !driver.assignedBus) {
+        return res.status(400).json({ message: "No bus assigned" });
+      }
+
+      const bus = await Bus.findOne({ busNo: driver.assignedBus });
+
+      let trip = null;
+
+      /* =================================================
+         1️⃣ RUNNING TRIP (highest priority)
+         ================================================= */
+      trip = await Trip.findOne({
+        driverId: driver._id,
+        status: "running",
+      });
+
+      /* =================================================
+         2️⃣ PAUSED TRIP
+         ================================================= */
+      if (!trip) {
+        trip = await Trip.findOne({
+          driverId: driver._id,
+          status: "paused",
+        });
+      }
+
+      /* =================================================
+         3️⃣ PLANNED EVENT (assigned to driver)
+         ================================================= */
+      if (!trip) {
+        trip = await Trip.findOne({
+          driverId: driver._id,
+          tripType: "event",
+          status: "planned",
+        }).sort({ createdAt: 1 });
+      }
+
+      /* =================================================
+         4️⃣ PLANNED ROUTE
+         ================================================= */
+      if (!trip) {
+        trip = await Trip.findOne({
+          driverId: driver._id,
+          tripType: "route",
+          status: "planned",
+        }).sort({ createdAt: 1 });
+      }
+
+      /* =================================================
+         5️⃣ AUTO CREATE ROUTE IF NOTHING EXISTS
+         ================================================= */
+      if (!trip) {
+        const totalTime = (bus.segmentTimes || []).reduce(
+          (a, b) => a + b,
+          0
+        );
+
+        trip = await Trip.create({
+          busNo: bus.busNo,
+          driverId: driver._id,
+          segmentTimes: bus.segmentTimes || [],
+          totalTime,
+          tripType: "route",
+          status: "planned",
+        });
+      }
+
+      res.json({
+        trip,
+        bus,
+      });
+
+    } catch (error) {
+      res.status(500).json({ message: error.message });
     }
-
-    const bus = await Bus.findOne({ busNo: driver.assignedBus });
-
-    let trip = await Trip.findOne({
-      busNo: driver.assignedBus,
-      status: { $ne: "completed" }
-    });
-
-    res.json({
-      trip,
-      bus
-    });
-
-  } catch (error) {
-    res.status(500).json({ message: error.message });
   }
-});
+);
 
 // PAUSE
 router.post("/trip/:id/pause", auth, allowRoles(["driver"]), async (req, res) => {

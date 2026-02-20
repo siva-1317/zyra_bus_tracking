@@ -22,7 +22,7 @@ import L from "leaflet";
 import "leaflet/dist/leaflet.css";
 import busImage from "../../assets/bus.png";
 
-/* ================= FIX DEFAULT MARKER ================= */
+/* ================= FIX MARKER ================= */
 delete L.Icon.Default.prototype._getIconUrl;
 L.Icon.Default.mergeOptions({
   iconRetinaUrl:
@@ -33,7 +33,7 @@ L.Icon.Default.mergeOptions({
     "https://unpkg.com/leaflet@1.7.1/dist/images/marker-shadow.png",
 });
 
-/* ================= CUSTOM ICONS ================= */
+/* ================= ICONS ================= */
 const stopIcon = new L.Icon({
   iconUrl: "https://cdn-icons-png.flaticon.com/512/684/684908.png",
   iconSize: [25, 25],
@@ -41,21 +41,19 @@ const stopIcon = new L.Icon({
 });
 
 const busIcon = new L.Icon({
-  iconUrl: "https://cdn-icons-png.flaticon.com/128/0/308.png"|| busImage ,
+  iconUrl: busImage,
   iconSize: [40, 40],
   iconAnchor: [20, 20],
 });
 
-/* ================= AUTO CENTER MAP ================= */
+/* ================= AUTO CENTER ================= */
 function RecenterMap({ location }) {
   const map = useMap();
-
   useEffect(() => {
     if (location) {
       map.setView([location.lat, location.lng], 15);
     }
   }, [location, map]);
-
   return null;
 }
 
@@ -70,112 +68,123 @@ export default function DriverTrackingPage() {
   const previousLocation = useRef(null);
   const animationRef = useRef(null);
 
-  /* ================= ANIMATE BUS MOVEMENT ================= */
- const animateMovement = (newLoc) => {
-  if (!previousLocation.current) {
-    previousLocation.current = newLoc;
-    setLocation(newLoc);
-    return;
-  }
+  /* ================= FETCH ACTIVE TRIP ================= */
+  const loadActiveTrip = async () => {
+    try {
+      const res = await API.get("/driver/active-trip");
 
-  // Stop previous animation
-  if (animationRef.current) {
-    cancelAnimationFrame(animationRef.current);
-  }
+      setTrip(res.data.trip);
+      setBus(res.data.bus);
 
-  const start = previousLocation.current;
-  const end = newLoc;
+      if (res.data.trip) {
+        setStatus(res.data.trip.status);
 
-  const duration = 1000; // 1 second smooth movement
-  const startTime = performance.now();
-
-  const animate = (time) => {
-    const progress = Math.min((time - startTime) / duration, 1);
-
-    const lat = start.lat + (end.lat - start.lat) * progress;
-    const lng = start.lng + (end.lng - start.lng) * progress;
-
-    setLocation({ lat, lng });
-
-    if (progress < 1) {
-      animationRef.current = requestAnimationFrame(animate);
-    } else {
-      previousLocation.current = newLoc;
+        if (res.data.trip.status === "running") {
+          startGPS(res.data.trip._id);
+        }
+      } else {
+        setStatus("idle");
+      }
+    } catch {
+      setStatus("idle");
     }
   };
 
-  animationRef.current = requestAnimationFrame(animate);
-};
-
-  /* ================= FETCH ACTIVE DATA ================= */
   useEffect(() => {
-    const fetchData = async () => {
-      try {
-        const res = await API.get("/driver/active-trip");
-
-        setTrip(res.data.trip);
-        setBus(res.data.bus);
-
-        if (res.data.trip) {
-          setStatus(res.data.trip.status);
-
-          if (res.data.trip.status === "running") {
-            startGPS(res.data.trip._id);
-          }
-        } else {
-          setStatus("idle");
-        }
-      } catch {
-        setStatus("idle");
-      }
-    };
-
-    fetchData();
+    loadActiveTrip();
   }, []);
 
   /* ================= CLEANUP ================= */
   useEffect(() => {
     return () => {
-      if (animationRef.current) clearInterval(animationRef.current);
       if (watchRef.current)
         navigator.geolocation.clearWatch(watchRef.current);
+      if (animationRef.current)
+        cancelAnimationFrame(animationRef.current);
     };
   }, []);
 
-  /* ================= FETCH ROAD ROUTE ================= */
+  /* ================= ANIMATION ================= */
+  const animateMovement = (newLoc) => {
+    if (!previousLocation.current) {
+      previousLocation.current = newLoc;
+      setLocation(newLoc);
+      return;
+    }
+
+    const start = previousLocation.current;
+    const end = newLoc;
+    const duration = 800;
+    const startTime = performance.now();
+
+    const animate = (time) => {
+      const progress = Math.min((time - startTime) / duration, 1);
+
+      const lat = start.lat + (end.lat - start.lat) * progress;
+      const lng = start.lng + (end.lng - start.lng) * progress;
+
+      setLocation({ lat, lng });
+
+      if (progress < 1) {
+        animationRef.current = requestAnimationFrame(animate);
+      } else {
+        previousLocation.current = newLoc;
+      }
+    };
+
+    animationRef.current = requestAnimationFrame(animate);
+  };
+
+  /* ================= ROUTE LOGIC ================= */
   useEffect(() => {
-    if (!bus || !bus.stops?.length) return;
+    if (!bus || !trip) return;
 
     const fetchRoute = async () => {
       try {
-        let fullRoute = [];
+        let route = [];
 
-        for (let i = 0; i < bus.stops.length - 1; i++) {
-          const start = bus.stops[i];
-          const end = bus.stops[i + 1];
+        if (trip.tripType === "event" && trip.destinationLat) {
+          const start = bus.stops[0];
 
-          const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
+          const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${trip.destinationLng},${trip.destinationLat}?overview=full&geometries=geojson`;
 
           const res = await fetch(url);
           const data = await res.json();
 
           if (data.routes?.length > 0) {
-            const segment = data.routes[0].geometry.coordinates.map((c) => [
+            route = data.routes[0].geometry.coordinates.map((c) => [
               c[1],
               c[0],
             ]);
-            fullRoute = [...fullRoute, ...segment];
+          }
+        } else {
+          for (let i = 0; i < bus.stops.length - 1; i++) {
+            const start = bus.stops[i];
+            const end = bus.stops[i + 1];
+
+            const url = `https://router.project-osrm.org/route/v1/driving/${start.lng},${start.lat};${end.lng},${end.lat}?overview=full&geometries=geojson`;
+
+            const res = await fetch(url);
+            const data = await res.json();
+
+            if (data.routes?.length > 0) {
+              const segment = data.routes[0].geometry.coordinates.map((c) => [
+                c[1],
+                c[0],
+              ]);
+              route = [...route, ...segment];
+            }
           }
         }
 
-        setRouteCoords(fullRoute);
+        setRouteCoords(route);
       } catch {
-        console.log("Route fetch failed");
+        console.log("Route load failed");
       }
     };
 
     fetchRoute();
-  }, [bus]);
+  }, [trip, bus]);
 
   /* ================= GPS ================= */
   const startGPS = (id) => {
@@ -190,11 +199,7 @@ export default function DriverTrackingPage() {
 
         animateMovement(newLoc);
 
-        try {
-          await API.post(`/driver/trip/${id}/location`, newLoc);
-        } catch (err) {
-          console.log("Location send failed");
-        }
+        await API.post(`/driver/trip/${id}/location`, newLoc);
       },
       (err) => console.log(err),
       { enableHighAccuracy: true }
@@ -202,28 +207,15 @@ export default function DriverTrackingPage() {
   };
 
   const stopGPS = () => {
-    if (watchRef.current) {
+    if (watchRef.current)
       navigator.geolocation.clearWatch(watchRef.current);
-    }
   };
 
-  /* ================= TRIP CONTROLS ================= */
+  /* ================= CONTROLS ================= */
   const startTrip = async () => {
-    try {
-      let id = trip?._id;
-
-      if (!id) {
-        const res = await API.post("/driver/create-trip");
-        id = res.data._id;
-        setTrip(res.data);
-      }
-
-      await API.post(`/driver/trip/${id}/start`);
-      setStatus("running");
-      startGPS(id);
-    } catch (err) {
-      console.log(err);
-    }
+    await API.post(`/driver/trip/${trip._id}/start`);
+    setStatus("running");
+    startGPS(trip._id);
   };
 
   const pauseTrip = async () => {
@@ -242,8 +234,24 @@ export default function DriverTrackingPage() {
     await API.post(`/driver/trip/${trip._id}/end`);
     stopGPS();
     previousLocation.current = null;
-    setTrip(null);
-    setStatus("idle");
+    setLocation(null);
+    await loadActiveTrip(); // 🔥 Auto load next trip
+  };
+
+  /* ================= STATUS COLOR ================= */
+  const getBadgeColor = () => {
+    switch (status) {
+      case "running":
+        return "success";
+      case "paused":
+        return "warning";
+      case "planned":
+        return "primary";
+      case "completed":
+        return "secondary";
+      default:
+        return "info";
+    }
   };
 
   if (!bus) {
@@ -262,22 +270,14 @@ export default function DriverTrackingPage() {
             <h4>Driver Tracking - {bus.busNo}</h4>
           </Col>
           <Col md={4} className="text-end">
-            <Badge
-              bg={
-                status === "running"
-                  ? "success"
-                  : status === "paused"
-                  ? "warning"
-                  : "info"
-              }
-            >
-              {status.toUpperCase()}
+            <Badge bg={getBadgeColor()}>
+              {status?.toUpperCase()}
             </Badge>
           </Col>
         </Row>
 
         <div className="mt-3 d-flex gap-2">
-          {status === "idle" && (
+          {status === "planned" && (
             <Button variant="success" onClick={startTrip}>
               Start Trip
             </Button>
@@ -309,7 +309,11 @@ export default function DriverTrackingPage() {
 
       <Card className="shadow-lg p-3">
         <MapContainer
-          center={[bus.stops[0].lat, bus.stops[0].lng]}
+          center={
+            routeCoords.length
+              ? routeCoords[0]
+              : [bus.stops[0].lat, bus.stops[0].lng]
+          }
           zoom={14}
           style={{ height: "500px", width: "100%" }}
         >
@@ -322,11 +326,12 @@ export default function DriverTrackingPage() {
             <Polyline positions={routeCoords} color="blue" />
           )}
 
-          {bus.stops.map((stop, i) => (
-            <Marker key={i} position={[stop.lat, stop.lng]} icon={stopIcon}>
-              <Popup>{stop.stopName}</Popup>
-            </Marker>
-          ))}
+          {trip?.tripType !== "event" &&
+            bus.stops.map((stop, i) => (
+              <Marker key={i} position={[stop.lat, stop.lng]} icon={stopIcon}>
+                <Popup>{stop.stopName}</Popup>
+              </Marker>
+            ))}
 
           {location && (
             <>

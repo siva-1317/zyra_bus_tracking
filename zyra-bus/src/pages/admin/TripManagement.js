@@ -28,6 +28,8 @@ export default function TripManagement() {
 
   const [message, setMessage] = useState("");
   const [error, setError] = useState("");
+  const [drivers, setDrivers] = useState([]);
+  
 
   /* ================= FETCH ================= */
 
@@ -35,6 +37,10 @@ export default function TripManagement() {
     const res = await API.get("/admin/bus");
     setBuses(res.data);
   };
+const fetchDrivers = async () => {
+  const res = await API.get("/admin/driver");
+  setDrivers(res.data);
+};
 
   const fetchTrips = async () => {
     const res = await API.get("/admin/trip-list");
@@ -50,40 +56,60 @@ export default function TripManagement() {
     fetchBuses();
     fetchTrips();
     fetchHistory();
+    fetchDrivers()
   }, []);
 
   /* ================= CREATE TRIP ================= */
 
-  const handleCreateTrip = async () => {
-    setError("");
-    setMessage("");
+const handleCreateTrip = async () => {
+  setError("");
+  setMessage("");
 
-    if (!formData.busNo || !formData.totalTime) {
-      setError("All fields required");
-      return;
-    }
+  const {
+    busNo,
+    driverId,
+    fromDate,
+    toDate,
+    startTime,
+    endTime,
+    destination,
+    reason
+  } = formData;
 
-    try {
-      await API.post("/admin/trip", {
-        busNo: formData.busNo,
-        direction: formData.direction,
-        totalTime: Number(formData.totalTime),
-      });
+  if (
+    !busNo ||
+    !driverId ||
+    !fromDate ||
+    !toDate ||
+    !startTime ||
+    !endTime ||
+    !destination ||
+    !reason
+  ) {
+    setError("All fields required");
+    return;
+  }
 
-      setMessage("Trip created successfully");
+  try {
+    await API.post("/admin/event-trip", formData);
 
-      setFormData({
-        busNo: "",
-        direction: "outbound",
-        totalTime: "",
-      });
+    setMessage("Event Trip Created Successfully");
 
-      fetchTrips();
-      setActiveTab("active");
-    } catch (err) {
-      setError(err.response?.data?.message || "Error creating trip");
-    }
-  };
+    setFormData({
+      busNo: "",
+      driverId: "",
+      fromDate: "",
+      toDate: "",
+      startTime: "",
+      endTime: "",
+      destination: "",
+      reason: ""
+    });
+
+  } catch (err) {
+    setError(err.response?.data?.message || "Error creating trip");
+  }
+};
 
   /* ================= DELETE HISTORY ================= */
 
@@ -119,59 +145,136 @@ export default function TripManagement() {
         className="mb-3"
       >
         {/* ================= CREATE TAB ================= */}
-        <Tab eventKey="create" title="Create Trip">
-          <Card className="p-3 mb-4">
-            <h5>Create New Trip</h5>
+        <Tab eventKey="create" title="Create Event Trip">
+  <Card className="p-4 shadow-sm">
+    <h5 className="mb-3">Create IV / Event Trip</h5>
 
-            {error && <Alert variant="danger">{error}</Alert>}
-            {message && <Alert variant="success">{message}</Alert>}
+    {error && <Alert variant="danger">{error}</Alert>}
+    {message && <Alert variant="success">{message}</Alert>}
 
-            <Row>
-              <Col md={3}>
-                <Form.Select
-                  value={formData.busNo}
-                  onChange={(e) =>
-                    setFormData({ ...formData, busNo: e.target.value })
-                  }
-                >
-                  <option value="">Select Bus</option>
-                  {buses.map((b) => (
-                    <option key={b._id} value={b.busNo}>
-                      {b.busNo} - {b.routeName}
-                    </option>
-                  ))}
-                </Form.Select>
-              </Col>
+    <Row className="g-3">
 
-              <Col md={3}>
-                <Form.Select
-                  value={formData.direction}
-                  onChange={(e) =>
-                    setFormData({ ...formData, direction: e.target.value })
-                  }
-                >
-                  <option value="outbound">Outbound</option>
-                  <option value="return">Return</option>
-                </Form.Select>
-              </Col>
+      {/* Bus */}
+      <Col md={4}>
+        <Form.Label>Select Bus</Form.Label>
+        <Form.Select
+          value={formData.busNo}
+          onChange={(e) =>
+            setFormData({ ...formData, busNo: e.target.value })
+          }
+        >
+          <option value="">Select Bus</option>
+          {buses.map((b) => (
+            <option key={b._id} value={b.busNo}>
+              {b.busNo} - {b.routeName}
+            </option>
+          ))}
+        </Form.Select>
+      </Col>
 
-              <Col md={3}>
-                <Form.Control
-                  type="number"
-                  placeholder="Total Time (minutes)"
-                  value={formData.totalTime}
-                  onChange={(e) =>
-                    setFormData({ ...formData, totalTime: e.target.value })
-                  }
-                />
-              </Col>
+      {/* Driver */}
+      <Col md={4}>
+        <Form.Label>Assign Driver</Form.Label>
+        <Form.Select
+          value={formData.driverId}
+          onChange={(e) =>
+            setFormData({ ...formData, driverId: e.target.value })
+          }
+        >
+          <option value="">Select Driver</option>
+          {drivers.map((d) => (
+            <option key={d._id} value={d._id}>
+              {d.name} - {d.driverId}
+            </option>
+          ))}
+        </Form.Select>
+      </Col>
 
-              <Col md={3}>
-                <Button onClick={handleCreateTrip}>Create Trip</Button>
-              </Col>
-            </Row>
-          </Card>
-        </Tab>
+      {/* Destination */}
+      <Col md={4}>
+        <Form.Label>Destination</Form.Label>
+        <Form.Control
+          type="text"
+          placeholder="Enter destination"
+          value={formData.destination}
+          onChange={(e) =>
+            setFormData({ ...formData, destination: e.target.value })
+          }
+        />
+      </Col>
+
+      {/* From Date */}
+      <Col md={3}>
+        <Form.Label>From Date</Form.Label>
+        <Form.Control
+          type="date"
+          value={formData.fromDate}
+          onChange={(e) =>
+            setFormData({ ...formData, fromDate: e.target.value })
+          }
+        />
+      </Col>
+
+      {/* To Date */}
+      <Col md={3}>
+        <Form.Label>To Date</Form.Label>
+        <Form.Control
+          type="date"
+          value={formData.toDate}
+          onChange={(e) =>
+            setFormData({ ...formData, toDate: e.target.value })
+          }
+        />
+      </Col>
+
+      {/* Start Time */}
+      <Col md={3}>
+        <Form.Label>Start Time</Form.Label>
+        <Form.Control
+          type="time"
+          value={formData.startTime}
+          onChange={(e) =>
+            setFormData({ ...formData, startTime: e.target.value })
+          }
+        />
+      </Col>
+
+      {/* End Time */}
+      <Col md={3}>
+        <Form.Label>End Time</Form.Label>
+        <Form.Control
+          type="time"
+          value={formData.endTime}
+          onChange={(e) =>
+            setFormData({ ...formData, endTime: e.target.value })
+          }
+        />
+      </Col>
+
+      {/* Reason */}
+      <Col md={12}>
+        <Form.Label>Reason / Event Description</Form.Label>
+        <Form.Control
+          as="textarea"
+          rows={3}
+          placeholder="Industrial Visit / Club Event / Competition"
+          value={formData.reason}
+          onChange={(e) =>
+            setFormData({ ...formData, reason: e.target.value })
+          }
+        />
+      </Col>
+
+      {/* Submit */}
+      <Col md={12} className="text-end">
+        <Button variant="success" onClick={handleCreateTrip}>
+          Create Event Trip
+        </Button>
+      </Col>
+
+    </Row>
+  </Card>
+</Tab>
 
         {/* ================= ACTIVE TRIPS TAB ================= */}
         <Tab eventKey="active" title="Active Trips">

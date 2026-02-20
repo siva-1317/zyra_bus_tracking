@@ -519,44 +519,60 @@ router.put(
   },
 );
 
-router.post("/trip", auth, allowRoles(["admin"]), async (req, res) => {
-  try {
-    const { busNo, direction, totalTime } = req.body;
+router.post(
+  "/event-trip",
+  auth,
+  allowRoles(["admin"]),
+  async (req, res) => {
+    try {
+      const {
+        busNo,
+        driverId,
+        fromDate,
+        toDate,
+        startTime,
+        endTime,
+        destination,
+        reason,
+      } = req.body;
 
-    const bus = await Bus.findOne({ busNo });
-    if (!bus) {
-      return res.status(404).json({ message: "Bus not found" });
+      if (
+        !busNo ||
+        !driverId ||
+        !fromDate ||
+        !toDate ||
+        !startTime ||
+        !endTime ||
+        !destination ||
+        !reason
+      ) {
+        return res.status(400).json({ message: "All fields required" });
+      }
+
+      const bus = await Bus.findOne({ busNo });
+      if (!bus) {
+        return res.status(404).json({ message: "Bus not found" });
+      }
+
+      const trip = await Trip.create({
+        busNo,
+        driverId,
+        fromDate,
+        toDate,
+        startTime,
+        endTime,
+        destination,
+        reason,
+        tripType: "event",
+        status: "planned",
+      });
+
+      res.json({ message: "Event Trip Created", trip });
+    } catch (err) {
+      res.status(400).json({ message: err.message });
     }
-
-    const totalDistance = bus.distances.reduce((a, b) => a + b, 0);
-    const timePerKm = totalTime / totalDistance;
-
-    let distances = [...bus.distances];
-    let stops = [...bus.stops];
-
-    if (direction === "return") {
-      distances.reverse();
-      stops.reverse();
-    }
-
-    const segmentTimes = distances.map((d) => d * timePerKm);
-
-    const trip = await Trip.create({
-      busNo,
-      direction,
-      totalTime,
-      segmentTimes,
-    });
-
-    res.json({
-      message: "Trip created",
-      trip,
-      stops,
-    });
-  } catch (err) {
-    res.status(400).json({ message: err.message });
   }
-});
+);
 
 router.get(
   "/trip-history/:busNo",
