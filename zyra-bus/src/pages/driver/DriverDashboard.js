@@ -15,9 +15,10 @@ import {
 } from "react-bootstrap";
 import { useState } from "react";
 import API from "../../api";
+import DriverTrackingPage from "./DriverTrackingPage";
 
 function DriverDashboard() {
-  const [key, setKey] = useState("apply");
+  const [key, setKey] = useState("details");
 
   // Leave details model
 
@@ -28,8 +29,6 @@ function DriverDashboard() {
   const [feedBackModel, setFeedBackModel] = useState(false);
   const feedBackModelClose = () => setFeedBackModel(false);
   const feedBackModelShow = () => setFeedBackModel(true);
-
-
 
   const [show, setShow] = useState(false);
 
@@ -152,50 +151,42 @@ function DriverDashboard() {
     }
   };
 
-const [category, setCategory] = useState("general");
-const [message, setMessage] = useState("");
-const [rating, setRating] = useState(3);
-const [loadingFeedback, setLoadingFeedback] = useState(false);
+  const [category, setCategory] = useState("general");
+  const [message, setMessage] = useState("");
+  const [rating, setRating] = useState(3);
+  const [loadingFeedback, setLoadingFeedback] = useState(false);
 
-const handleFeedbackSubmit = async (e) => {
-  e.preventDefault();
+  const handleFeedbackSubmit = async (e) => {
+    e.preventDefault();
 
-  try {
-    setLoadingFeedback(true);
+    try {
+      setLoadingFeedback(true);
 
-    await API.post("/driver/feedback", {
-      busNo: bus?.busNo,
-      rating,
-      category: category.toLowerCase(),
-      message
-    });
+      await API.post("/driver/feedback", {
+        busNo: bus?.busNo,
+        rating,
+        category: category.toLowerCase(),
+        message,
+      });
 
-    alert("Feedback submitted successfully");
+      alert("Feedback submitted successfully");
 
-    setCategory("general");
-    setMessage("");
-    setRating(3);
-
-  } catch (err) {
-    alert(err.response?.data?.message || "Failed to submit feedback");
-  } finally {
-    setLoadingFeedback(false);
-  }
-};
-
-
-
-
-
-
-
-
+      setCategory("general");
+      setMessage("");
+      setRating(3);
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to submit feedback");
+    } finally {
+      setLoadingFeedback(false);
+    }
+  };
 
   // ===========================================frontend===================================================================
 
   return (
     <div>
       <Header />
+      <DriverTrackingPage/>
       <button className="feedback-btn" onClick={feedBackModelShow}>
         <i class="bi bi-chat-quote"></i>
       </button>
@@ -277,6 +268,77 @@ const handleFeedbackSubmit = async (e) => {
                   onSelect={(k) => setKey(k)}
                   className="mb-3"
                 >
+                  <Tab eventKey="details" title="Leave Details">
+                    <h5>Leave Details</h5>
+                    <hr />
+                    <Table striped bordered hover responsive="sm">
+                      <thead>
+                        <tr>
+                          <th>S.No</th>
+                          <th>From</th>
+                          <th>To</th>
+                          <th>Status</th>
+                          <th>Details</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {leaves.length === 0 ? (
+                          <tr>
+                            <td colSpan="5" className="text-center">
+                              No leave records found
+                            </td>
+                          </tr>
+                        ) : (
+                          leaves.map((leave, index) => (
+                            <tr key={leave._id}>
+                              <td>{index + 1}</td>
+                              <td>
+                                {new Date(leave.fromDate).toLocaleDateString()}
+                              </td>
+                              <td>
+                                {new Date(leave.toDate).toLocaleDateString()}
+                              </td>
+                              <td>
+                                <Badge
+                                  bg={
+                                    leave.status === "approved"
+                                      ? "success"
+                                      : leave.status === "rejected"
+                                        ? "danger"
+                                        : "warning"
+                                  }
+                                >
+                                  {leave.status}
+                                </Badge>
+                              </td>
+                              <td className="d-flex justify-content-center gap-2">
+                                <Button
+                                  size="sm"
+                                  onClick={() => {
+                                    setSelectedLeave(leave);
+                                    ModelShow();
+                                  }}
+                                >
+                                  View
+                                </Button>
+
+                                {leave.status === "waiting" && (
+                                  <Button
+                                    size="sm"
+                                    variant="danger"
+                                    onClick={() => handleDeleteLeave(leave._id)}
+                                  >
+                                    Cancel
+                                  </Button>
+                                )}
+                              </td>
+                            </tr>
+                          ))
+                        )}
+                      </tbody>
+                    </Table>
+                  </Tab>
+
                   <Tab eventKey="apply" title="Leave Apply">
                     <h5>Leave Apply</h5>
                     <hr />
@@ -353,76 +415,7 @@ const handleFeedbackSubmit = async (e) => {
                     </Form>
                   </Tab>
 
-                  <Tab eventKey="details" title="Leave Details">
-                    <h5>Leave Details</h5>
-                    <hr />
-                    <Table striped bordered hover responsive="sm">
-                      <thead>
-                        <tr>
-                          <th>S.No</th>
-                          <th>From</th>
-                          <th>To</th>
-                          <th>Status</th>
-                          <th>Details</th>
-                        </tr>
-                      </thead>
-                      <tbody>
-                        {leaves.length === 0 ? (
-                          <tr>
-                            <td colSpan="5" className="text-center">
-                              No leave records found
-                            </td>
-                          </tr>
-                        ) : (
-                          leaves.map((leave, index) => (
-                            <tr key={leave._id}>
-                              <td>{index + 1}</td>
-                              <td>
-                                {new Date(leave.fromDate).toLocaleDateString()}
-                              </td>
-                              <td>
-                                {new Date(leave.toDate).toLocaleDateString()}
-                              </td>
-                              <td>
-                                <Badge
-                                  bg={
-                                    leave.status === "approved"
-                                      ? "success"
-                                      : leave.status === "rejected"
-                                        ? "danger"
-                                        : "warning"
-                                  }
-                                >
-                                  {leave.status}
-                                </Badge>
-                              </td>
-                              <td className="d-flex justify-content-center gap-2">
-                                <Button
-                                  size="sm"
-                                  onClick={() => {
-                                    setSelectedLeave(leave);
-                                    ModelShow();
-                                  }}
-                                >
-                                  View
-                                </Button>
-
-                                {leave.status === "waiting" && (
-                                  <Button
-                                    size="sm"
-                                    variant="danger"
-                                    onClick={() => handleDeleteLeave(leave._id)}
-                                  >
-                                    Cancel
-                                  </Button>
-                                )}
-                              </td>
-                            </tr>
-                          ))
-                        )}
-                      </tbody>
-                    </Table>
-                  </Tab>
+                 
                 </Tabs>
               </CardBody>
             </Card>
@@ -437,46 +430,59 @@ const handleFeedbackSubmit = async (e) => {
           <Modal.Title>Leave Details</Modal.Title>
         </Modal.Header>
         <Modal.Body className="p-3">
-  {selectedLeave && (
-    <Row>
-      <p>
-        Status :{" "}
-        <Badge
-          bg={
-            selectedLeave.status === "approved"
-              ? "success"
-              : selectedLeave.status === "rejected"
-              ? "danger"
-              : "warning"
-          }
-        >
-          {selectedLeave.status}
-        </Badge>
-      </p>
+          {selectedLeave && (
+            <Row>
+              <p>
+                Status :{" "}
+                <Badge
+                  bg={
+                    selectedLeave.status === "approved"
+                      ? "success"
+                      : selectedLeave.status === "rejected"
+                        ? "danger"
+                        : "warning"
+                  }
+                >
+                  {selectedLeave.status}
+                </Badge>
+              </p>
 
-      <Col md={6}>
-        <p><strong>From Date:</strong> {new Date(selectedLeave.fromDate).toLocaleDateString()}</p>
-        <p><strong>From Time:</strong> {selectedLeave.fromTime}</p>
-      </Col>
+              <Col md={6}>
+                <p>
+                  <strong>From Date:</strong>{" "}
+                  {new Date(selectedLeave.fromDate).toLocaleDateString()}
+                </p>
+                <p>
+                  <strong>From Time:</strong> {selectedLeave.fromTime}
+                </p>
+              </Col>
 
-      <Col md={6}>
-        <p><strong>To Date:</strong> {new Date(selectedLeave.toDate).toLocaleDateString()}</p>
-        <p><strong>To Time:</strong> {selectedLeave.toTime}</p>
-      </Col>
+              <Col md={6}>
+                <p>
+                  <strong>To Date:</strong>{" "}
+                  {new Date(selectedLeave.toDate).toLocaleDateString()}
+                </p>
+                <p>
+                  <strong>To Time:</strong> {selectedLeave.toTime}
+                </p>
+              </Col>
 
-      <p><strong>Reason:</strong></p>
-      <p>{selectedLeave.reason}</p>
+              <p>
+                <strong>Reason:</strong>
+              </p>
+              <p>{selectedLeave.reason}</p>
 
-      {selectedLeave.adminRemark && (
-        <>
-          <p><strong>Admin Remark:</strong></p>
-          <p>{selectedLeave.adminRemark}</p>
-        </>
-      )}
-    </Row>
-  )}
-</Modal.Body>
-
+              {selectedLeave.adminRemark && (
+                <>
+                  <p>
+                    <strong>Admin Remark:</strong>
+                  </p>
+                  <p>{selectedLeave.adminRemark}</p>
+                </>
+              )}
+            </Row>
+          )}
+        </Modal.Body>
       </Modal>
 
       {/* =====================feedback modal============= */}
@@ -485,62 +491,61 @@ const handleFeedbackSubmit = async (e) => {
           <h4>Feed Back Form</h4>
         </Modal.Header>
         <Modal.Body>
-         <Form onSubmit={handleFeedbackSubmit}>
-  <Form.Group className="mb-3">
-    <Form.Label>Category</Form.Label>
-    <Form.Select
-      value={category}
-      onChange={(e) => setCategory(e.target.value)}
-    >
-      <option value="driver">Driver</option>
-      <option value="bus">Bus</option>
-      <option value="route">Route</option>
-      <option value="timing">Timing</option>
-      <option value="general">General</option>
-    </Form.Select>
-  </Form.Group>
+          <Form onSubmit={handleFeedbackSubmit}>
+            <Form.Group className="mb-3">
+              <Form.Label>Category</Form.Label>
+              <Form.Select
+                value={category}
+                onChange={(e) => setCategory(e.target.value)}
+              >
+                <option value="driver">Driver</option>
+                <option value="bus">Bus</option>
+                <option value="route">Route</option>
+                <option value="timing">Timing</option>
+                <option value="general">General</option>
+              </Form.Select>
+            </Form.Group>
 
-  <Form.Group className="mb-3">
-    <Form.Label>Rate Us</Form.Label>
-    <div>
-      {[1, 2, 3, 4, 5].map((star) => (
-        <i
-          key={star}
-          className={`bi ${
-            star <= rating ? "bi-star-fill text-warning" : "bi-star"
-          }`}
-          style={{
-            fontSize: "25px",
-            cursor: "pointer",
-            marginRight: "5px",
-          }}
-          onClick={() => setRating(star)}
-        ></i>
-      ))}
-    </div>
-  </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Rate Us</Form.Label>
+              <div>
+                {[1, 2, 3, 4, 5].map((star) => (
+                  <i
+                    key={star}
+                    className={`bi ${
+                      star <= rating ? "bi-star-fill text-warning" : "bi-star"
+                    }`}
+                    style={{
+                      fontSize: "25px",
+                      cursor: "pointer",
+                      marginRight: "5px",
+                    }}
+                    onClick={() => setRating(star)}
+                  ></i>
+                ))}
+              </div>
+            </Form.Group>
 
-  <Form.Group className="mb-3">
-    <Form.Label>Message</Form.Label>
-    <Form.Control
-      as="textarea"
-      rows={3}
-      value={message}
-      onChange={(e) => setMessage(e.target.value)}
-      required
-    />
-  </Form.Group>
+            <Form.Group className="mb-3">
+              <Form.Label>Message</Form.Label>
+              <Form.Control
+                as="textarea"
+                rows={3}
+                value={message}
+                onChange={(e) => setMessage(e.target.value)}
+                required
+              />
+            </Form.Group>
 
-  <button
-    type="submit"
-    disabled={loadingFeedback}
-    className="btn w-100 mt-4"
-    style={{ backgroundColor: "blueviolet", color: "white" }}
-  >
-    {loadingFeedback ? "Submitting..." : "Submit"}
-  </button>
-</Form>
-
+            <button
+              type="submit"
+              disabled={loadingFeedback}
+              className="btn w-100 mt-4"
+              style={{ backgroundColor: "blueviolet", color: "white" }}
+            >
+              {loadingFeedback ? "Submitting..." : "Submit"}
+            </button>
+          </Form>
         </Modal.Body>
       </Modal>
 

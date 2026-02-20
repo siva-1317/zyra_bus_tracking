@@ -83,8 +83,7 @@ export default function ManageBus() {
       (filterDriver === "assigned" && bus.driverId) ||
       (filterDriver === "unassigned" && !bus.driverId);
 
-    const availableSeats =
-      bus.availableSeats ?? bus.totalSeats ?? 0;
+    const availableSeats = bus.availableSeats ?? bus.totalSeats ?? 0;
 
     const matchesCapacity =
       filterCapacity === "" ||
@@ -92,15 +91,9 @@ export default function ManageBus() {
       (filterCapacity === "available" && availableSeats > 0);
 
     const matchesTrip =
-      filterTripStatus === "" ||
-      bus.tripStatus === filterTripStatus;
+      filterTripStatus === "" || bus.tripStatus === filterTripStatus;
 
-    return (
-      matchesSearch &&
-      matchesDriver &&
-      matchesCapacity &&
-      matchesTrip
-    );
+    return matchesSearch && matchesDriver && matchesCapacity && matchesTrip;
   });
 
   /* ================= MANAGE ================= */
@@ -127,7 +120,13 @@ export default function ManageBus() {
       ...selectedBus,
       stops: [
         ...selectedBus.stops,
-        { stopName: "", morningTime: "", eveningTime: "" },
+        {
+          stopName: "",
+          lat: "",
+          lng: "",
+          morningTime: "",
+          eveningTime: "",
+        },
       ],
     });
   };
@@ -140,9 +139,7 @@ export default function ManageBus() {
   };
 
   const removeStop = (index) => {
-    const updatedStops = selectedBus.stops.filter(
-      (_, i) => i !== index
-    );
+    const updatedStops = selectedBus.stops.filter((_, i) => i !== index);
     setSelectedBus({ ...selectedBus, stops: updatedStops });
   };
 
@@ -261,10 +258,7 @@ export default function ManageBus() {
           </Col>
         </Row>
 
-        <Button
-          className="w-100 mt-4"
-          onClick={handleAddBus}
-        >
+        <Button className="w-100 mt-4" onClick={handleAddBus}>
           Add Bus
         </Button>
       </Card>
@@ -283,9 +277,7 @@ export default function ManageBus() {
           <Col md={3}>
             <Form.Select
               value={filterDriver}
-              onChange={(e) =>
-                setFilterDriver(e.target.value)
-              }
+              onChange={(e) => setFilterDriver(e.target.value)}
             >
               <option value="">All Drivers</option>
               <option value="assigned">Assigned</option>
@@ -296,29 +288,21 @@ export default function ManageBus() {
           <Col md={3}>
             <Form.Select
               value={filterCapacity}
-              onChange={(e) =>
-                setFilterCapacity(e.target.value)
-              }
+              onChange={(e) => setFilterCapacity(e.target.value)}
             >
               <option value="">All Capacity</option>
               <option value="full">Full</option>
-              <option value="available">
-                Seats Available
-              </option>
+              <option value="available">Seats Available</option>
             </Form.Select>
           </Col>
 
           <Col md={3}>
             <Form.Select
               value={filterTripStatus}
-              onChange={(e) =>
-                setFilterTripStatus(e.target.value)
-              }
+              onChange={(e) => setFilterTripStatus(e.target.value)}
             >
               <option value="">All Status</option>
-              <option value="not-started">
-                Not Started
-              </option>
+              <option value="not-started">Not Started</option>
               <option value="running">Running</option>
               <option value="paused">Paused</option>
               <option value="ended">Ended</option>
@@ -346,28 +330,18 @@ export default function ManageBus() {
               <td>{bus.busNo}</td>
               <td>{bus.routeName}</td>
               <td>
-                {(bus.availableSeats ??
-                  bus.totalSeats) ||
-                  0}
-                /{bus.totalSeats}
+                {(bus.availableSeats ?? bus.totalSeats) || 0}/{bus.totalSeats}
               </td>
               <td>
                 {bus.driverId ? (
-                  <Badge bg="success">
-                    {bus.driverId}
-                  </Badge>
+                  <Badge bg="success">{bus.driverId}</Badge>
                 ) : (
-                  <Badge bg="secondary">
-                    No Driver
-                  </Badge>
+                  <Badge bg="secondary">No Driver</Badge>
                 )}
               </td>
               <td>{bus.stops?.length || 0}</td>
               <td>
-                <Button
-                  size="sm"
-                  onClick={() => openManage(bus)}
-                >
+                <Button size="sm" onClick={() => openManage(bus)}>
                   Manage
                 </Button>
               </td>
@@ -377,11 +351,7 @@ export default function ManageBus() {
       </Table>
 
       {/* ================= MODAL ================= */}
-      <Modal
-        show={manageModal}
-        onHide={() => setManageModal(false)}
-        size="lg"
-      >
+      <Modal show={manageModal} onHide={() => setManageModal(false)} size="lg">
         <Modal.Header closeButton>
           <Modal.Title>Manage Bus</Modal.Title>
         </Modal.Header>
@@ -426,76 +396,84 @@ export default function ManageBus() {
                 + Add Stop
               </Button>
 
-              {selectedBus.stops.map(
-                (stop, index) => (
-                  <Card
-                    key={index}
-                    className="mb-2 p-2"
-                  >
-                    <Row className="g-2">
-                      <Col md={4}>
-                        <Form.Control
-                          placeholder="Stop Name"
-                          value={stop.stopName}
-                          onChange={(e) =>
-                            updateStop(
-                              index,
-                              "stopName",
-                              e.target.value
-                            )
-                          }
-                        />
-                      </Col>
+              {selectedBus.stops.map((stop, index) => (
+                <Card key={index} className="mb-2 p-3 shadow-sm">
+                  <Row className="g-2">
+                    {/* Stop Name */}
+                    <Col md={3}>
+                      <Form.Control
+                        placeholder="Stop Name"
+                        value={stop.stopName}
+                        onChange={(e) =>
+                          updateStop(index, "stopName", e.target.value)
+                        }
+                      />
+                    </Col>
 
-                      <Col md={3}>
-                        <Form.Control
-                          type="time"
-                          value={stop.morningTime}
-                          onChange={(e) =>
-                            updateStop(
-                              index,
-                              "morningTime",
-                              e.target.value
-                            )
-                          }
-                        />
-                      </Col>
+                    {/* Latitude */}
+                    <Col md={2}>
+                      <Form.Control
+                        type="number"
+                        step="any"
+                        placeholder="Latitude"
+                        value={stop.lat}
+                        onChange={(e) =>
+                          updateStop(index, "lat", e.target.value)
+                        }
+                      />
+                    </Col>
 
-                      <Col md={3}>
-                        <Form.Control
-                          type="time"
-                          value={stop.eveningTime}
-                          onChange={(e) =>
-                            updateStop(
-                              index,
-                              "eveningTime",
-                              e.target.value
-                            )
-                          }
-                        />
-                      </Col>
+                    {/* Longitude */}
+                    <Col md={2}>
+                      <Form.Control
+                        type="number"
+                        step="any"
+                        placeholder="Longitude"
+                        value={stop.lng}
+                        onChange={(e) =>
+                          updateStop(index, "lng", e.target.value)
+                        }
+                      />
+                    </Col>
 
-                      <Col md={2}>
-                        <Button
-                          variant="danger"
-                          size="sm"
-                          onClick={() =>
-                            removeStop(index)
-                          }
-                        >
-                          Delete
-                        </Button>
-                      </Col>
-                    </Row>
-                  </Card>
-                )
-              )}
+                    {/* Morning Time */}
+                    <Col md={2}>
+                      <Form.Control
+                        type="time"
+                        value={stop.morningTime}
+                        onChange={(e) =>
+                          updateStop(index, "morningTime", e.target.value)
+                        }
+                      />
+                    </Col>
+
+                    {/* Evening Time */}
+                    <Col md={2}>
+                      <Form.Control
+                        type="time"
+                        value={stop.eveningTime}
+                        onChange={(e) =>
+                          updateStop(index, "eveningTime", e.target.value)
+                        }
+                      />
+                    </Col>
+
+                    {/* Delete */}
+                    <Col md={1}>
+                      <Button
+                        variant="danger"
+                        size="sm"
+                        onClick={() => removeStop(index)}
+                      >
+                        X
+                      </Button>
+                    </Col>
+                  </Row>
+                </Card>
+              ))}
 
               <hr />
-              <Button
-                variant="danger"
-                onClick={handleDelete}
-              >
+              <Button variant="danger" onClick={handleDelete}>
                 Delete Bus
               </Button>
             </>
@@ -503,19 +481,11 @@ export default function ManageBus() {
         </Modal.Body>
 
         <Modal.Footer>
-          <Button
-            variant="secondary"
-            onClick={() =>
-              setManageModal(false)
-            }
-          >
+          <Button variant="secondary" onClick={() => setManageModal(false)}>
             Close
           </Button>
 
-          <Button
-            variant="success"
-            onClick={handleUpdate}
-          >
+          <Button variant="success" onClick={handleUpdate}>
             Save Changes
           </Button>
         </Modal.Footer>

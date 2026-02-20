@@ -172,49 +172,9 @@ router.get(
   }
 );
 
-// START
-router.post("/trip/:id/start", auth, allowRoles(["driver"]), async (req, res) => {
-  const trip = await Trip.findById(req.params.id);
-  trip.startTime = new Date();
-  trip.status = "running";
-  await trip.save();
-  res.json({ message: "Trip started" });
-});
 
-// PAUSE
-router.post("/trip/:id/pause", auth, allowRoles(["driver"]), async (req, res) => {
-  const trip = await Trip.findById(req.params.id);
-  trip.pauseStart = new Date();
-  trip.status = "paused";
-  await trip.save();
-  res.json({ message: "Trip paused" });
-});
 
-// RESUME
-router.post("/trip/:id/resume", auth, allowRoles(["driver"]), async (req, res) => {
-  const trip = await Trip.findById(req.params.id);
-  trip.pausedDuration += Date.now() - trip.pauseStart.getTime();
-  trip.pauseStart = null;
-  trip.status = "running";
-  await trip.save();
-  res.json({ message: "Trip resumed" });
-});
 
-// SKIP
-router.post("/trip/:id/skip", auth, allowRoles(["driver"]), async (req, res) => {
-  const trip = await Trip.findById(req.params.id);
-  trip.currentSegmentIndex++;
-  await trip.save();
-  res.json({ message: "Moved to next stop" });
-});
-
-// END
-router.post("/trip/:id/end", auth, allowRoles(["driver"]), async (req, res) => {
-  const trip = await Trip.findById(req.params.id);
-  trip.status = "completed";
-  await trip.save();
-  res.json({ message: "Trip ended" });
-});
 
 
 
@@ -303,6 +263,192 @@ router.get(
   }
 );
 
+router.post(
+  "/trip/:id/start",
+  auth,
+  allowRoles(["driver"]),
+  async (req, res) => {
+    try {
+      const trip = await Trip.findById(req.params.id);
+      if (!trip) {
+        return res.status(404).json({ message: "Trip not found" });
+      }
+
+      if (trip.status === "running") {
+        return res.status(400).json({ message: "Trip already running" });
+      }
+
+      trip.startTime = new Date();
+      trip.status = "running";
+      trip.pausedDuration = 0;
+      trip.pauseStart = null;
+
+      await trip.save();
+
+      res.json({
+        message: "Trip started successfully",
+        trip
+      });
+
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
+router.post(
+  "/trip/:id/end",
+  auth,
+  allowRoles(["driver"]),
+  async (req, res) => {
+    try {
+      const trip = await Trip.findById(req.params.id);
+      if (!trip) {
+        return res.status(404).json({ message: "Trip not found" });
+      }
+
+      if (trip.status === "completed") {
+        return res.status(400).json({ message: "Trip already completed" });
+      }
+
+      trip.status = "completed";
+      trip.endTime = new Date();
+
+      await trip.save();
+
+      res.json({
+        message: "Trip ended successfully"
+      });
+
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
+router.post("/trip/:id/location", async (req, res) => {
+  try {
+    const trip = await Trip.findById(req.params.id);
+
+    if (!trip) {
+      return res.status(404).json({ message: "Trip not found" });
+    }
+
+    const { lat, lng } = req.body;
+
+    // 🔥 FIXED VALIDATION
+    if (lat === undefined || lng === undefined) {
+      return res.status(400).json({ message: "Invalid location data" });
+    }
+
+    trip.currentLocation = { lat, lng };
+    trip.lastLocationUpdate = new Date();
+
+    await trip.save();
+
+    res.json({ message: "Location updated successfully" });
+
+  } catch (error) {
+    console.log("Location error:", error);
+    res.status(500).json({ message: error.message });
+  }
+});
+
+
+router.get("/active-trip", auth, allowRoles(["driver"]), async (req, res) => {
+  try {
+    const driver = await Driver.findOne({ userId: req.user.id });
+
+    if (!driver || !driver.assignedBus) {
+      return res.status(400).json({ message: "No bus assigned" });
+    }
+
+    const bus = await Bus.findOne({ busNo: driver.assignedBus });
+
+    let trip = await Trip.findOne({
+      busNo: driver.assignedBus,
+      status: { $ne: "completed" }
+    });
+
+    res.json({
+      trip,
+      bus
+    });
+
+  } catch (error) {
+    res.status(500).json({ message: error.message });
+  }
+});
+
+// PAUSE
+router.post("/trip/:id/pause", auth, allowRoles(["driver"]), async (req, res) => {
+  const trip = await Trip.findById(req.params.id);
+  if (!trip) return res.status(404).json({ message: "Trip not found" });
+
+  trip.pauseStart = new Date();
+  trip.status = "paused";
+  await trip.save();
+
+  res.json({ message: "Trip paused" });
+});
+
+// RESUME
+router.post("/trip/:id/resume", auth, allowRoles(["driver"]), async (req, res) => {
+  const trip = await Trip.findById(req.params.id);
+  if (!trip) return res.status(404).json({ message: "Trip not found" });
+
+  trip.pausedDuration += Date.now() - trip.pauseStart.getTime();
+  trip.pauseStart = null;
+  trip.status = "running";
+  await trip.save();
+
+  res.json({ message: "Trip resumed" });
+});
+
+router.post(
+  "/create-trip",
+  auth,
+  allowRoles(["driver"]),
+  async (req, res) => {
+    try {
+      const driver = await Driver.findOne({ userId: req.user.id });
+
+      if (!driver || !driver.assignedBus) {
+        return res.status(400).json({ message: "No bus assigned" });
+      }
+
+      const bus = await Bus.findOne({ busNo: driver.assignedBus });
+      if (!bus) {
+        return res.status(404).json({ message: "Bus not found" });
+      }
+
+      // Check existing active trip
+      const existingTrip = await Trip.findOne({
+        busNo: bus.busNo,
+        status: { $ne: "completed" }
+      });
+
+      if (existingTrip) {
+        return res.json(existingTrip);
+      }
+
+      const totalTime = (bus.segmentTimes || []).reduce((a, b) => a + b, 0);
+
+      const trip = await Trip.create({
+        busNo: bus.busNo,
+        segmentTimes: bus.segmentTimes || [],
+        totalTime,
+        status: "idle"
+      });
+
+      res.json(trip);
+
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
 
 router.post(
   "/feedback",
@@ -336,6 +482,142 @@ router.post(
     }
   }
 );
+
+
+
+
+router.post(
+  "/trip/:id/location",
+  auth,
+  allowRoles(["driver"]),
+  async (req, res) => {
+    try {
+      const { lat, lng } = req.body;
+
+      const trip = await Trip.findById(req.params.id);
+      if (!trip) return res.status(404).json({ message: "Trip not found" });
+
+      trip.currentLocation = { lat, lng };
+      trip.lastLocationUpdate = new Date();
+
+      await trip.save();
+
+      res.json({ message: "Location updated" });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+
+router.get(
+  "/trip/:busNo/tracking",
+  async (req, res) => {
+    try {
+      const { busNo } = req.params;
+
+      const trip = await Trip.findOne({
+        busNo,
+        status: { $in: ["running", "paused"] }
+      });
+
+      if (!trip) {
+        return res.json({ message: "No active trip" });
+      }
+
+      const bus = await Bus.findOne({ busNo });
+      if (!bus) return res.status(404).json({ message: "Bus not found" });
+
+      const now = Date.now();
+
+      // =========================
+      // CHECK GPS MODE
+      // =========================
+      const gpsTimeout = 30000; // 30 sec
+      let trackingMode = "time";
+
+      if (
+        trip.lastLocationUpdate &&
+        now - trip.lastLocationUpdate.getTime() < gpsTimeout
+      ) {
+        trackingMode = "gps";
+      }
+
+      // =========================
+      // TIME-BASED CALCULATION
+      // =========================
+      const pausedDuration = trip.pausedDuration || 0;
+      const effectiveElapsed =
+        now - trip.startTime.getTime() - pausedDuration;
+
+      let cumulativeMs = 0;
+      let currentIndex = 0;
+
+      const etaList = [];
+
+      for (let i = 0; i < bus.stops.length; i++) {
+        if (i > 0) {
+          cumulativeMs += trip.segmentTimes[i - 1] * 60000;
+        }
+
+        let status = "upcoming";
+
+        if (effectiveElapsed >= cumulativeMs) {
+          status = "completed";
+          currentIndex = i;
+        } else if (i === currentIndex) {
+          status = "current";
+        }
+
+        const etaTime = new Date(
+          trip.startTime.getTime() +
+            cumulativeMs +
+            pausedDuration
+        );
+
+        etaList.push({
+          stop: bus.stops[i],
+          eta: etaTime,
+          status
+        });
+      }
+
+      const progressPercent = Math.min(
+        (effectiveElapsed / (trip.totalTime * 60000)) * 100,
+        100
+      );
+
+      res.json({
+        trackingMode,
+        busLocation: trip.currentLocation || null,
+        progressPercent,
+        currentStopIndex: currentIndex,
+        eta: etaList
+      });
+
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  }
+);
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

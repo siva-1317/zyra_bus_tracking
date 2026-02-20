@@ -1,5 +1,8 @@
 import "./App.css";
 import { Routes, Route } from "react-router-dom";
+import "leaflet/dist/leaflet.css";
+
+
 import Login from "./pages/Login";
 import StudentDashboard from "./pages/student/StudentDashboard";
 import DriverDashboard from "./pages/driver/DriverDashboard";

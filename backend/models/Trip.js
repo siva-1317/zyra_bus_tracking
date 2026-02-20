@@ -6,41 +6,31 @@ const tripSchema = new mongoose.Schema({
     required: true
   },
 
-  direction: {
+  status: {
     type: String,
-    enum: ["outbound", "return"],
-    required: true
-  },
-
-  totalTime: {
-    type: Number, // minutes
-    required: true
-  },
-
-  segmentTimes: {
-    type: [Number] // auto-calculated from distance
+    enum: ["idle", "running", "paused", "completed"],
+    default: "idle"
   },
 
   startTime: Date,
+  endTime: Date,
 
-  pauseStart: Date,
+  segmentTimes: [Number],
+  totalTime: Number,
 
   pausedDuration: {
-    type: Number,
-    default: 0 // milliseconds
-  },
-
-  currentSegmentIndex: {
     type: Number,
     default: 0
   },
 
-  status: {
-    type: String,
-    enum: ["planned", "running", "paused", "completed"],
-    default: "planned"
-  }
+  pauseStart: Date,
 
-}, { timestamps: true });
+  currentLocation: {
+    lat: Number,
+    lng: Number
+  },
+
+  lastLocationUpdate: Date
+});
 
 module.exports = mongoose.model("Trip", tripSchema);
