@@ -31,6 +31,8 @@ const tripSchema = new mongoose.Schema({
   },
 
   lastLocationUpdate: Date
-});
+},
+{ timestamps: true } 
+);
 
 module.exports = mongoose.model("Trip", tripSchema);

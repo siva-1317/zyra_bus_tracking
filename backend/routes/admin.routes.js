@@ -558,6 +558,38 @@ router.post("/trip", auth, allowRoles(["admin"]), async (req, res) => {
   }
 });
 
+router.get(
+  "/trip-history/:busNo",
+  auth,
+  allowRoles(["admin"]),
+  async (req, res) => {
+    try {
+      const trips = await Trip.find({
+        busNo: req.params.busNo,
+      }).sort({ createdAt: -1 });
+
+      res.json(trips);
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
+router.delete(
+  "/trip-history/:tripId",
+  auth,
+  allowRoles(["admin"]),
+  async (req, res) => {
+    try {
+      await Trip.findByIdAndDelete(req.params.tripId);
+
+      res.json({ message: "Trip deleted successfully" });
+    } catch (err) {
+      res.status(500).json({ message: err.message });
+    }
+  }
+);
+
 router.put(
   "/reset-student-password/:rollNumber",
   auth,
