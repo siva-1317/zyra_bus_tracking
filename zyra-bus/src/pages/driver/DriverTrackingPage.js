@@ -6,7 +6,6 @@ import {
   Badge,
   Row,
   Col,
-  Alert,
 } from "react-bootstrap";
 import {
   MapContainer,
@@ -17,6 +16,7 @@ import {
   useMap,
 } from "react-leaflet";
 import API from "../../api";
+import { toast } from "../../utils/toast";
 
 import L from "leaflet";
 import "leaflet/dist/leaflet.css";
@@ -70,6 +70,7 @@ export default function DriverTrackingPage() {
   const watchRef = useRef(null);
   const previousLocation = useRef(null);
   const animationRef = useRef(null);
+  const noBusWarnedRef = useRef(false);
 
   /* ================= FETCH ACTIVE TRIP ================= */
   const loadActiveTrip = async () => {
@@ -96,6 +97,20 @@ export default function DriverTrackingPage() {
   useEffect(() => {
     loadActiveTrip();
   }, []);
+
+  useEffect(() => {
+    if (!bus && status !== "loading" && !noBusWarnedRef.current) {
+      noBusWarnedRef.current = true;
+      toast.show({
+        type: "warning",
+        title: "Bus Not Assigned",
+        message: "No bus assigned. Please contact admin.",
+      });
+    }
+    if (bus) {
+      noBusWarnedRef.current = false;
+    }
+  }, [bus, status]);
 
   /* ================= CLEANUP ================= */
   useEffect(() => {
@@ -303,7 +318,9 @@ export default function DriverTrackingPage() {
   if (!bus) {
     return (
       <Container className="mt-4">
-        <Alert variant="warning">No bus assigned.</Alert>
+        <Card className="soft-card">
+          <p className="mb-0">No bus assigned.</p>
+        </Card>
       </Container>
     );
   }

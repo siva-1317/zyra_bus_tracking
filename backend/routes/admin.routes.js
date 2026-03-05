@@ -240,7 +240,16 @@ const refreshTripCalendarHistory = async (tripDoc, oldTripDoc = null) => {
 // ADD BUS
 router.post("/bus", auth, allowRoles(["admin"]), async (req, res) => {
   try {
-    const bus = await Bus.create(req.body);
+    const stops = Array.isArray(req.body.stops) ? req.body.stops : [];
+    const requestedType =
+      req.body.busType === "regular" ? "regular" : "alternative";
+    const busType = stops.length > 0 ? "regular" : requestedType;
+
+    const bus = await Bus.create({
+      ...req.body,
+      stops,
+      busType,
+    });
     res.json(bus);
   } catch (err) {
     res.status(400).json({ message: err.message });
@@ -316,7 +325,15 @@ router.put("/bus/:busNo", auth, allowRoles(["admin"]), async (req, res) => {
 
     if (req.body.routeName !== undefined) bus.routeName = req.body.routeName;
 
-    if (req.body.stops !== undefined) bus.stops = req.body.stops;
+    if (req.body.stops !== undefined) {
+      bus.stops = Array.isArray(req.body.stops) ? req.body.stops : [];
+    }
+    if (req.body.busType !== undefined) {
+      bus.busType = req.body.busType;
+    }
+    if (Array.isArray(bus.stops) && bus.stops.length > 0) {
+      bus.busType = "regular";
+    }
     if (req.body.tripStartMorning !== undefined)
       bus.tripStartMorning = req.body.tripStartMorning;
     if (req.body.tripEndMorning !== undefined)
@@ -424,6 +441,10 @@ router.get("/alternative-buses", auth, allowRoles(["admin"]), async (req, res) =
       ...(fromBusNo ? { busNo: { $ne: fromBusNo } } : {}),
       driverId: { $in: [null, ""] },
       conditionStatus: { $ne: "need-repair" },
+      $or: [
+        { busType: "alternative" },
+        { busType: { $exists: false }, "stops.0": { $exists: false } },
+      ],
     }).select("busNo routeName");
 
     const available = [];
@@ -477,6 +498,7 @@ router.put("/swap-bus", auth, allowRoles(["admin"]), async (req, res) => {
     const fromBusDetails = {
       routeName: fromBus.routeName,
       stops: fromBus.stops,
+      busType: fromBus.busType,
       tripStartMorning: fromBus.tripStartMorning,
       tripEndMorning: fromBus.tripEndMorning,
       tripStartEvening: fromBus.tripStartEvening,
@@ -486,6 +508,7 @@ router.put("/swap-bus", auth, allowRoles(["admin"]), async (req, res) => {
     const toBusDetails = {
       routeName: toBus.routeName,
       stops: toBus.stops,
+      busType: toBus.busType,
       tripStartMorning: toBus.tripStartMorning,
       tripEndMorning: toBus.tripEndMorning,
       tripStartEvening: toBus.tripStartEvening,
@@ -515,6 +538,9 @@ router.put("/swap-bus", auth, allowRoles(["admin"]), async (req, res) => {
     fromBus.availableSeats = fromBus.totalSeats;
     fromBus.routeName = toBusDetails.routeName;
     fromBus.stops = toBusDetails.stops;
+    fromBus.busType =
+      toBusDetails.busType ||
+      ((toBusDetails.stops || []).length > 0 ? "regular" : "alternative");
     fromBus.tripStartMorning = toBusDetails.tripStartMorning;
     fromBus.tripEndMorning = toBusDetails.tripEndMorning;
     fromBus.tripStartEvening = toBusDetails.tripStartEvening;
@@ -525,6 +551,9 @@ router.put("/swap-bus", auth, allowRoles(["admin"]), async (req, res) => {
     toBus.conditionStatus = "good";
     toBus.routeName = fromBusDetails.routeName;
     toBus.stops = fromBusDetails.stops;
+    toBus.busType =
+      fromBusDetails.busType ||
+      ((fromBusDetails.stops || []).length > 0 ? "regular" : "alternative");
     toBus.tripStartMorning = fromBusDetails.tripStartMorning;
     toBus.tripEndMorning = fromBusDetails.tripEndMorning;
     toBus.tripStartEvening = fromBusDetails.tripStartEvening;

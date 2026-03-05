@@ -7,10 +7,10 @@ import {
   Row,
   Col,
   Badge,
-  Alert,
   Card
 } from "react-bootstrap";
 import API from "../../api";
+import { toast } from "../../utils/toast";
 import "../../styles/manage-driver-soft.css";
 
 export default function ManageDriver() {
@@ -25,16 +25,11 @@ export default function ManageDriver() {
     licenseNo: ""
   });
 
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
-
   const [manageModal, setManageModal] = useState(false);
   const [selectedDriver, setSelectedDriver] = useState(null);
   const [newPassword, setNewPassword] = useState("");
   const [bulkDriverModal, setBulkDriverModal] = useState(false);
   const [bulkDriverText, setBulkDriverText] = useState("");
-  const [bulkDriverError, setBulkDriverError] = useState("");
-  const [bulkDriverSummary, setBulkDriverSummary] = useState("");
   const [bulkDriverLoading, setBulkDriverLoading] = useState(false);
   const [selectedDriverIds, setSelectedDriverIds] = useState([]);
   const [bulkDeleteMode, setBulkDeleteMode] = useState("selected");
@@ -57,18 +52,23 @@ export default function ManageDriver() {
   }, []);
 
   const handleAddDriver = async () => {
-    setError("");
-    setMessage("");
-
     if (!formData.driverId || !formData.name) {
-      setError("Driver ID and Name are required");
+      toast.show({
+        type: "warning",
+        title: "Add Driver",
+        message: "Driver ID and Name are required",
+      });
       return;
     }
 
     try {
       await API.post("/admin/driver", formData);
 
-      setMessage("Driver added successfully (Default Password: 123456)");
+      toast.show({
+        type: "success",
+        title: "Add Driver",
+        message: "Driver added successfully (Default Password: 123456)",
+      });
 
       setFormData({
         driverId: "",
@@ -79,7 +79,11 @@ export default function ManageDriver() {
 
       fetchDrivers();
     } catch (err) {
-      setError(err.response?.data?.message || "Error adding driver");
+      toast.show({
+        type: "error",
+        title: "Add Driver",
+        message: err.response?.data?.message || "Error adding driver",
+      });
     }
   };
 
@@ -106,7 +110,11 @@ export default function ManageDriver() {
 
   const handleResetPassword = async () => {
     if (!newPassword || newPassword.trim().length < 4) {
-      setError("New password must be at least 4 characters");
+      toast.show({
+        type: "warning",
+        title: "Reset Password",
+        message: "New password must be at least 4 characters",
+      });
       return;
     }
 
@@ -116,11 +124,17 @@ export default function ManageDriver() {
         { newPassword: newPassword.trim() }
       );
       setNewPassword("");
-      setError("");
-      setMessage("Driver password reset successfully");
+      toast.show({
+        type: "success",
+        title: "Reset Password",
+        message: "Driver password reset successfully",
+      });
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to reset driver password");
-      setMessage("");
+      toast.show({
+        type: "error",
+        title: "Reset Password",
+        message: err.response?.data?.message || "Failed to reset driver password",
+      });
     }
   };
 
@@ -133,13 +147,19 @@ export default function ManageDriver() {
       await API.delete(
         `/admin/driver/${selectedDriver.driverId}`
       );
-      setMessage(`Driver ${selectedDriver.driverId} deleted successfully`);
-      setError("");
+      toast.show({
+        type: "success",
+        title: "Delete Driver",
+        message: `Driver ${selectedDriver.driverId} deleted successfully`,
+      });
       setManageModal(false);
       fetchDrivers();
     } catch (err) {
-      setError(err.response?.data?.message || "Error deleting driver");
-      setMessage("");
+      toast.show({
+        type: "error",
+        title: "Delete Driver",
+        message: err.response?.data?.message || "Error deleting driver",
+      });
     }
   };
 
@@ -150,14 +170,15 @@ export default function ManageDriver() {
       .filter(Boolean);
 
     if (!lines.length) {
-      setBulkDriverError("Enter at least one driver row.");
-      setBulkDriverSummary("");
+      toast.show({
+        type: "warning",
+        title: "Bulk Add Drivers",
+        message: "Enter at least one driver row.",
+      });
       return;
     }
 
     setBulkDriverLoading(true);
-    setBulkDriverError("");
-    setBulkDriverSummary("");
 
     let created = 0;
     let failed = 0;
@@ -183,9 +204,17 @@ export default function ManageDriver() {
     }
 
     if (created > 0) fetchDrivers();
-    setBulkDriverSummary(`Created ${created} drivers.`);
+    toast.show({
+      type: "success",
+      title: "Bulk Add Drivers",
+      message: `Created ${created} drivers.`,
+    });
     if (failed > 0) {
-      setBulkDriverError(`Failed ${failed} rows. Line numbers: ${failedLines.join(", ")}`);
+      toast.show({
+        type: "warning",
+        title: "Bulk Add Drivers",
+        message: `Failed ${failed} rows. Line numbers: ${failedLines.join(", ")}`,
+      });
     }
 
     setBulkDriverLoading(false);
@@ -212,8 +241,11 @@ export default function ManageDriver() {
 
     if (bulkDeleteMode === "selected") {
       if (selectedDriverIds.length === 0) {
-        setError("Select at least one driver");
-        setMessage("");
+        toast.show({
+          type: "warning",
+          title: "Bulk Delete",
+          message: "Select at least one driver",
+        });
         return;
       }
       payload = { ...payload, driverIds: selectedDriverIds };
@@ -227,13 +259,19 @@ export default function ManageDriver() {
     try {
       setBulkDeleteLoading(true);
       const res = await API.delete("/admin/drivers/bulk", { data: payload });
-      setMessage(`${res.data.deletedCount || 0} driver(s) deleted successfully`);
-      setError("");
+      toast.show({
+        type: "success",
+        title: "Bulk Delete",
+        message: `${res.data.deletedCount || 0} driver(s) deleted successfully`,
+      });
       setSelectedDriverIds([]);
       fetchDrivers();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to bulk delete drivers");
-      setMessage("");
+      toast.show({
+        type: "error",
+        title: "Bulk Delete",
+        message: err.response?.data?.message || "Failed to bulk delete drivers",
+      });
     } finally {
       setBulkDeleteLoading(false);
     }
@@ -247,9 +285,6 @@ export default function ManageDriver() {
       {/* ================= ADD DRIVER ================= */}
       <Card className="glass-card mb-4">
         <h5 className="section-title">Add New Driver</h5>
-
-        {error && <Alert variant="danger">{error}</Alert>}
-        {message && <Alert variant="success">{message}</Alert>}
 
         <Row className="g-3">
           <Col md={3}>
@@ -595,8 +630,6 @@ export default function ManageDriver() {
               Format: <code>driverId,name,phone,licenseNo</code>
             </div>
           </Form.Group>
-          {bulkDriverError && <Alert variant="warning" className="mt-3 mb-2">{bulkDriverError}</Alert>}
-          {bulkDriverSummary && <Alert variant="success" className="mt-3 mb-2">{bulkDriverSummary}</Alert>}
           <Button
             className="primary-btn mt-2"
             onClick={handleBulkDriverAdd}

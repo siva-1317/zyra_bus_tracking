@@ -71,7 +71,13 @@ router.get("/profile", auth, allowRoles(["student"]), async (req, res) => {
 router.get("/routes", auth, allowRoles(["student"]), async (req, res) => {
   try {
     const buses = await Bus.find(
-      { availableSeats: { $gt: 0 } }, // only buses with seats
+      {
+        availableSeats: { $gt: 0 },
+        $or: [
+          { busType: "regular" },
+          { busType: { $exists: false }, "stops.0": { $exists: true } },
+        ],
+      }, // only regular buses with seats
       "busNo routeName stops availableSeats"
     );
 

@@ -73,6 +73,12 @@ availableSeats: {
     default: "good"
   },
 
+  busType: {
+    type: String,
+    enum: ["regular", "alternative"],
+    default: "alternative"
+  },
+
   tripType: {
     type: String,
     enum: ["morning", "evening"],

@@ -6,7 +6,6 @@ import {
   Badge,
   Row,
   Col,
-  Alert,
   Card,
   Tabs,
   Tab,
@@ -37,8 +36,6 @@ export default function TripManagement() {
     eventStops: [],
   });
 
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
   const [drivers, setDrivers] = useState([]);
   const [showEdit, setShowEdit] = useState(false);
   const [editingTrip, setEditingTrip] = useState(null);
@@ -89,9 +86,6 @@ const fetchDrivers = async () => {
   /* ================= CREATE TRIP ================= */
 
 const handleCreateTrip = async () => {
-  setError("");
-  setMessage("");
-
   const {
     busNo,
     driverId,
@@ -117,14 +111,22 @@ const handleCreateTrip = async () => {
     !destinationLat ||
     !destinationLng
   ) {
-    setError("All fields required");
+    toast.show({
+      type: "warning",
+      title: "Create Trip",
+      message: "All fields required",
+    });
     return;
   }
 
   try {
     await API.post("/admin/event-trip", formData);
 
-    setMessage("Event Trip Created Successfully");
+    toast.show({
+      type: "success",
+      title: "Create Trip",
+      message: "Event Trip Created Successfully",
+    });
 
     setFormData({
       busNo: "",
@@ -141,7 +143,11 @@ const handleCreateTrip = async () => {
     });
 
   } catch (err) {
-    setError(err.response?.data?.message || "Error creating trip");
+    toast.show({
+      type: "error",
+      title: "Create Trip",
+      message: err.response?.data?.message || "Error creating trip",
+    });
   }
 };
 
@@ -364,9 +370,6 @@ const handleCreateTrip = async () => {
 
         <Card className="glass-card p-4">
           <h5 className="section-title mb-4">Create IV / Event Trip</h5>
-
-          {error && <Alert variant="danger">{error}</Alert>}
-          {message && <Alert variant="success">{message}</Alert>}
 
           <Row className="g-4">
 

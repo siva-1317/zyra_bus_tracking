@@ -7,13 +7,15 @@ import {
   Badge,
   Row,
   Col,
-  Alert,
   Card,
   Accordion,
+  Tabs,
+  Tab,
 } from "react-bootstrap";
 import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip } from "react-leaflet";
 import L from "leaflet";
 import API from "../../api";
+import { toast } from "../../utils/toast";
 import "../../styles/manage-bus-soft.css";
 
 export default function ManageBus() {
@@ -21,8 +23,6 @@ export default function ManageBus() {
   const [buses, setBuses] = useState([]);
   const [liveBuses, setLiveBuses] = useState([]);
   const [routeCoordsByBus, setRouteCoordsByBus] = useState({});
-  const [message, setMessage] = useState("");
-  const [error, setError] = useState("");
 
   const [search, setSearch] = useState("");
   const [filterDriver, setFilterDriver] = useState("");
@@ -35,6 +35,7 @@ export default function ManageBus() {
     busNo: "",
     routeName: "",
     totalSeats: "",
+    busType: "alternative",
     tripStartMorning: "",
     tripEndMorning: "",
     tripStartEvening: "",
@@ -55,10 +56,9 @@ export default function ManageBus() {
   const [alternativeBuses, setAlternativeBuses] = useState([]);
   const [swapLoading, setSwapLoading] = useState(false);
   const [bulkStopsText, setBulkStopsText] = useState("");
-  const [bulkStopsError, setBulkStopsError] = useState("");
-  const [bulkStopsMessage, setBulkStopsMessage] = useState("");
   const [draggedStopIndex, setDraggedStopIndex] = useState(null);
   const [dragOverStopIndex, setDragOverStopIndex] = useState(null);
+  const [busListTab, setBusListTab] = useState("active");
 
   const fetchBuses = async () => {
     const res = await API.get("/admin/bus");
@@ -117,12 +117,16 @@ export default function ManageBus() {
   const handleAddBus = async () => {
     try {
       await API.post("/admin/bus", formData);
-      setMessage("Bus added successfully");
-      setError("");
+      toast.show({
+        type: "success",
+        title: "Add Bus",
+        message: "Bus added successfully",
+      });
       setFormData({
         busNo: "",
         routeName: "",
         totalSeats: "",
+        busType: "alternative",
         tripStartMorning: "",
         tripEndMorning: "",
         tripStartEvening: "",
@@ -131,8 +135,11 @@ export default function ManageBus() {
       });
       fetchBuses();
     } catch (err) {
-      setError(err.response?.data?.message || "Error adding bus");
-      setMessage("");
+      toast.show({
+        type: "error",
+        title: "Add Bus",
+        message: err.response?.data?.message || "Error adding bus",
+      });
     }
   };
 
@@ -159,6 +166,75 @@ export default function ManageBus() {
     return matchesSearch && matchesDriver && matchesCapacity && matchesTrip;
   });
 
+  const resolveBusType = (bus) => {
+    if (bus.busType === "regular" || bus.busType === "alternative") return bus.busType;
+    return (bus.stops || []).length > 0 ? "regular" : "alternative";
+  };
+
+  const maintenanceBuses = filteredBuses.filter(
+    (bus) =>
+      bus.conditionStatus === "need-repair" || bus.conditionStatus === "maintenance",
+  );
+
+  const alternativeListBuses = filteredBuses.filter((bus) => {
+    const isMaintenance =
+      bus.conditionStatus === "need-repair" || bus.conditionStatus === "maintenance";
+    return !isMaintenance && resolveBusType(bus) === "alternative";
+  });
+
+  const activeBuses = filteredBuses.filter((bus) => {
+    const isMaintenance =
+      bus.conditionStatus === "need-repair" || bus.conditionStatus === "maintenance";
+    return !isMaintenance && resolveBusType(bus) === "regular";
+  });
+
+  const renderBusRows = (list, emptyMessage) => {
+    if (!list.length) {
+      return (
+        <tr>
+          <td colSpan={8} className="text-center">
+            {emptyMessage}
+          </td>
+        </tr>
+      );
+    }
+
+    return list.map((bus) => (
+      <tr key={bus._id}>
+        <td>{bus.busNo}</td>
+        <td>{bus.routeName}</td>
+        <td>
+          <Badge bg={resolveBusType(bus) === "regular" ? "primary" : "secondary"}>
+            {resolveBusType(bus) === "regular" ? "Regular" : "Alternative"}
+          </Badge>
+        </td>
+        <td>
+          {bus.conditionStatus === "need-repair" ? (
+            <Badge bg="danger">Need Repair</Badge>
+          ) : (
+            <Badge bg="success">Good</Badge>
+          )}
+        </td>
+        <td>
+          {(bus.availableSeats ?? bus.totalSeats) || 0}/{bus.totalSeats}
+        </td>
+        <td>
+          {bus.driverId ? (
+            <Badge className="badge-success-soft">{bus.driverId}</Badge>
+          ) : (
+            <Badge className="badge-secondary-soft">No Driver</Badge>
+          )}
+        </td>
+        <td>{bus.stops?.length || 0}</td>
+        <td>
+          <Button className="primary-btn-sm" onClick={() => openManage(bus)}>
+            Manage
+          </Button>
+        </td>
+      </tr>
+    ));
+  };
+
   const openManage = (bus) => {
     const normalizedStops = (bus.stops || []).map((stop) => ({
       stopName: stop.stopName || "",
@@ -172,6 +248,7 @@ export default function ManageBus() {
       ...bus,
       routeName: bus.routeName || "",
       totalSeats: bus.totalSeats ?? "",
+      busType: resolveBusType(bus),
       tripStartMorning: bus.tripStartMorning || "",
       tripEndMorning: bus.tripEndMorning || "",
       tripStartEvening: bus.tripStartEvening || "",
@@ -180,8 +257,6 @@ export default function ManageBus() {
       stops: normalizedStops,
     });
     setBulkStopsText("");
-    setBulkStopsError("");
-    setBulkStopsMessage("");
     setDraggedStopIndex(null);
     setDragOverStopIndex(null);
     setManageModal(true);
@@ -191,6 +266,7 @@ const handleUpdate = async () => {
   const updatedData = {
     routeName: selectedBus.routeName,
     totalSeats: Number(selectedBus.totalSeats),
+    busType: selectedBus.busType || "alternative",
     tripStartMorning: selectedBus.tripStartMorning || "",
     tripEndMorning: selectedBus.tripEndMorning || "",
     tripStartEvening: selectedBus.tripStartEvening || "",
@@ -201,13 +277,19 @@ const handleUpdate = async () => {
 
   try {
     await API.put(`/admin/bus/${selectedBus.busNo}`, updatedData);
-    setMessage(`Bus ${selectedBus.busNo} updated successfully`);
-    setError("");
+    toast.show({
+      type: "success",
+      title: "Update Bus",
+      message: `Bus ${selectedBus.busNo} updated successfully`,
+    });
     fetchBuses();
     setManageModal(false);
   } catch (err) {
-    setError(err.response?.data?.message || "Failed to update bus");
-    setMessage("");
+    toast.show({
+      type: "error",
+      title: "Update Bus",
+      message: err.response?.data?.message || "Failed to update bus",
+    });
   }
 };
 
@@ -218,13 +300,19 @@ const handleUpdate = async () => {
 
     try {
       await API.delete(`/admin/bus/${selectedBus.busNo}`);
-      setMessage(`Bus ${selectedBus.busNo} deleted successfully`);
-      setError("");
+      toast.show({
+        type: "success",
+        title: "Delete Bus",
+        message: `Bus ${selectedBus.busNo} deleted successfully`,
+      });
       fetchBuses();
       setManageModal(false);
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to delete bus");
-      setMessage("");
+      toast.show({
+        type: "error",
+        title: "Delete Bus",
+        message: err.response?.data?.message || "Failed to delete bus",
+      });
     }
   };
 
@@ -251,14 +339,21 @@ const handleUpdate = async () => {
 
   const handleSwapBus = async () => {
     if (!fromBusNo || !toBusNo) {
-      setError("Select both From Bus and Alternative Bus");
+      toast.show({
+        type: "warning",
+        title: "Bus Swap",
+        message: "Select both From Bus and Alternative Bus",
+      });
       return;
     }
     try {
       setSwapLoading(true);
       await API.put("/admin/swap-bus", { fromBusNo, toBusNo });
-      setMessage(`Bus changed successfully: ${fromBusNo} -> ${toBusNo}`);
-      setError("");
+      toast.show({
+        type: "success",
+        title: "Bus Swap",
+        message: `Bus changed successfully: ${fromBusNo} -> ${toBusNo}`,
+      });
       setFromBusNo("");
       setToBusNo("");
       setAlternativeBuses([]);
@@ -266,8 +361,11 @@ const handleUpdate = async () => {
       fetchComplaints();
       fetchLiveBuses();
     } catch (err) {
-      setError(err.response?.data?.message || "Failed to change bus");
-      setMessage("");
+      toast.show({
+        type: "error",
+        title: "Bus Swap",
+        message: err.response?.data?.message || "Failed to change bus",
+      });
     } finally {
       setSwapLoading(false);
     }
@@ -321,8 +419,11 @@ const handleUpdate = async () => {
       .filter(Boolean);
 
     if (!lines.length) {
-      setBulkStopsError("Enter at least one stop line.");
-      setBulkStopsMessage("");
+      toast.show({
+        type: "warning",
+        title: "Add Stops",
+        message: "Enter at least one stop line.",
+      });
       return;
     }
 
@@ -352,8 +453,11 @@ const handleUpdate = async () => {
     });
 
     if (!parsedStops.length) {
-      setBulkStopsError("No valid stop rows found. Use: stopName,lat,lng[,morningTime,eveningTime]");
-      setBulkStopsMessage("");
+      toast.show({
+        type: "warning",
+        title: "Add Stops",
+        message: "No valid stop rows found. Use: stopName,lat,lng[,morningTime,eveningTime]",
+      });
       return;
     }
 
@@ -363,11 +467,17 @@ const handleUpdate = async () => {
     });
 
     if (invalidLines.length > 0) {
-      setBulkStopsError(`Added ${parsedStops.length} stops. Skipped invalid lines: ${invalidLines.join(", ")}`);
-      setBulkStopsMessage("");
+      toast.show({
+        type: "warning",
+        title: "Add Stops",
+        message: `Added ${parsedStops.length} stops. Skipped invalid lines: ${invalidLines.join(", ")}`,
+      });
     } else {
-      setBulkStopsError("");
-      setBulkStopsMessage(`${parsedStops.length} stops added.`);
+      toast.show({
+        type: "success",
+        title: "Add Stops",
+        message: `${parsedStops.length} stops added.`,
+      });
     }
     setBulkStopsText("");
   };
@@ -405,6 +515,11 @@ const handleUpdate = async () => {
     const matchStatus =
       filterLiveStatus === "all" || status === filterLiveStatus;
     return matchBus && matchStatus;
+  });
+
+  const activeComplaints = complaints.filter((c) => {
+    const status = String(c.status || "").toLowerCase();
+    return status !== "resolved" && status !== "rejected";
   });
 
   useEffect(() => {
@@ -474,11 +589,8 @@ const handleUpdate = async () => {
       <Card className="glass-card mb-4">
         <h5 className="section-title">Add New Bus</h5>
 
-        {error && <Alert variant="danger">{error}</Alert>}
-        {message && <Alert variant="success">{message}</Alert>}
-
         <Row className="g-3">
-          <Col xs={12} md={3}>
+          <Col xs={12} md={2}>
             <Form.Control
               placeholder="Bus No"
               value={formData.busNo}
@@ -488,7 +600,7 @@ const handleUpdate = async () => {
             />
           </Col>
 
-          <Col xs={12} md={6}>
+          <Col xs={12} md={5}>
             <Form.Control
               placeholder="Route Name"
               value={formData.routeName}
@@ -553,6 +665,18 @@ const handleUpdate = async () => {
                 setFormData({ ...formData, tripEndEvening: e.target.value })
               }
             />
+          </Col>
+
+          <Col xs={12} md={2}>
+            <Form.Select
+              value={formData.busType || "alternative"}
+              onChange={(e) =>
+                setFormData({ ...formData, busType: e.target.value })
+              }
+            >
+              <option value="alternative">Alternative</option>
+              <option value="regular">Regular</option>
+            </Form.Select>
           </Col>
         </Row>
 
@@ -649,55 +773,83 @@ const handleUpdate = async () => {
         </Row>
       </Card>
 
-      {/* TABLE */}
+      {/* BUS LIST TABS */}
       <Card className="glass-card">
-        <div className="table-wrapper">
-          <Table hover responsive>
-            <thead>
-              <tr>
-                <th>Bus No</th>
-                <th>Route</th>
-                <th>Condition</th>
-                <th>Capacity</th>
-                <th>Driver</th>
-                <th>Stops</th>
-                <th>Manage</th>
-              </tr>
-            </thead>
-
-            <tbody>
-              {filteredBuses.map((bus) => (
-                <tr key={bus._id}>
-                  <td>{bus.busNo}</td>
-                  <td>{bus.routeName}</td>
-                  <td>
-                    {bus.conditionStatus === "need-repair" ? (
-                      <Badge bg="danger">Need Repair</Badge>
-                    ) : (
-                      <Badge bg="success">Good</Badge>
-                    )}
-                  </td>
-                  <td>
-                    {(bus.availableSeats ?? bus.totalSeats) || 0}/{bus.totalSeats}
-                  </td>
-                  <td>
-                    {bus.driverId ? (
-                      <Badge className="badge-success-soft">{bus.driverId}</Badge>
-                    ) : (
-                      <Badge className="badge-secondary-soft">No Driver</Badge>
-                    )}
-                  </td>
-                  <td>{bus.stops?.length || 0}</td>
-                  <td>
-                    <Button className="primary-btn-sm" onClick={() => openManage(bus)}>
-                      Manage
-                    </Button>
-                  </td>
-                </tr>
-              ))}
-            </tbody>
-          </Table>
-        </div>
+        <Tabs
+          activeKey={busListTab}
+          onSelect={(k) => setBusListTab(k || "active")}
+          className="mb-3"
+        >
+          <Tab eventKey="active" title={`Active Buses (${activeBuses.length})`}>
+            <div className="table-wrapper">
+              <Table hover responsive>
+                <thead>
+                  <tr>
+                    <th>Bus No</th>
+                    <th>Route</th>
+                    <th>Type</th>
+                    <th>Condition</th>
+                    <th>Capacity</th>
+                    <th>Driver</th>
+                    <th>Stops</th>
+                    <th>Manage</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {renderBusRows(activeBuses, "No active buses found")}
+                </tbody>
+              </Table>
+            </div>
+          </Tab>
+          <Tab
+            eventKey="alternative"
+            title={`Alternative Buses (${alternativeListBuses.length})`}
+          >
+            <div className="table-wrapper">
+              <Table hover responsive>
+                <thead>
+                  <tr>
+                    <th>Bus No</th>
+                    <th>Route</th>
+                    <th>Type</th>
+                    <th>Condition</th>
+                    <th>Capacity</th>
+                    <th>Driver</th>
+                    <th>Stops</th>
+                    <th>Manage</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {renderBusRows(alternativeListBuses, "No alternative buses found")}
+                </tbody>
+              </Table>
+            </div>
+          </Tab>
+          <Tab
+            eventKey="maintenance"
+            title={`Maintenance Buses (${maintenanceBuses.length})`}
+          >
+            <div className="table-wrapper">
+              <Table hover responsive>
+                <thead>
+                  <tr>
+                    <th>Bus No</th>
+                    <th>Route</th>
+                    <th>Type</th>
+                    <th>Condition</th>
+                    <th>Capacity</th>
+                    <th>Driver</th>
+                    <th>Stops</th>
+                    <th>Manage</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {renderBusRows(maintenanceBuses, "No maintenance buses found")}
+                </tbody>
+              </Table>
+            </div>
+          </Tab>
+        </Tabs>
       </Card>
 
       <Card className="glass-card mt-4">
@@ -715,14 +867,14 @@ const handleUpdate = async () => {
               </tr>
             </thead>
             <tbody>
-              {complaints.length === 0 ? (
+              {activeComplaints.length === 0 ? (
                 <tr>
                   <td colSpan={6} className="text-center">
                     No complaints found
                   </td>
                 </tr>
               ) : (
-                complaints.map((c) => (
+                activeComplaints.map((c) => (
                   <tr key={c._id}>
                     <td>{c.busNo}</td>
                     <td>{c.driverId?.driverId || "-"}</td>
@@ -956,6 +1108,21 @@ const handleUpdate = async () => {
               <option value="need-repair">Need Repair</option>
             </Form.Select>
 
+            <Form.Label className="form-label-soft">Bus Type</Form.Label>
+            <Form.Select
+              value={selectedBus.busType || "alternative"}
+              onChange={(e) =>
+                setSelectedBus({
+                  ...selectedBus,
+                  busType: e.target.value,
+                })
+              }
+              className="mb-4 input-soft"
+            >
+              <option value="alternative">Alternative</option>
+              <option value="regular">Regular</option>
+            </Form.Select>
+
             <Form.Label className="form-label-soft">Morning Start Time</Form.Label>
             <Form.Control
               type="time"
@@ -1036,8 +1203,6 @@ const handleUpdate = async () => {
               <div className="bulk-stop-help">
                 Format: <code>stopName,lat,lng[,morningTime,eveningTime]</code>. If times are skipped, default <code>00:00</code> is used.
               </div>
-              {bulkStopsError && <Alert variant="warning" className="mt-2 mb-2">{bulkStopsError}</Alert>}
-              {bulkStopsMessage && <Alert variant="success" className="mt-2 mb-2">{bulkStopsMessage}</Alert>}
               <Button size="sm" className="add-stop-btn mt-2" onClick={handleBulkAddStops}>
                 Add Stops From Text
               </Button>

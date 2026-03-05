@@ -169,7 +169,13 @@ function DriverDashboard() {
         reason,
       });
 
-      setLeaveMessage(res.data.message);
+      const successMessage = res.data.message || "Leave request submitted";
+      setLeaveMessage(successMessage);
+      toast.show({
+        type: "success",
+        title: "Leave Request",
+        message: successMessage,
+      });
       // Reset form
       setFromDate("");
       setToDate("");
@@ -177,19 +183,23 @@ function DriverDashboard() {
       setToTime("");
       setReason("");
     } catch (err) {
-      setLeaveMessage(err.response?.data?.message || "Failed to apply leave");
+      const errorMessage = err.response?.data?.message || "Failed to apply leave";
+      setLeaveMessage(errorMessage);
+      toast.show({
+        type: "error",
+        title: "Leave Request",
+        message: errorMessage,
+      });
     } finally {
       setLoadingLeave(false);
-      toast.show({
-        type: "info",
-        title: "Leave Request",
-        message: "Leave request processed",
-      });
     }
   };
 
   const [leaves, setLeaves] = useState([]);
   const [selectedLeave, setSelectedLeave] = useState(null);
+  const [showCancelLeaveConfirm, setShowCancelLeaveConfirm] = useState(false);
+  const [leaveToCancel, setLeaveToCancel] = useState(null);
+  const [cancelLeaveLoading, setCancelLeaveLoading] = useState(false);
   useEffect(() => {
     const fetchLeaves = async () => {
       try {
@@ -296,18 +306,39 @@ function DriverDashboard() {
   };
 
   const handleDeleteLeave = async (id) => {
-    if (!window.confirm("Are you sure you want to cancel this leave?")) return;
+    setLeaveToCancel(id);
+    setShowCancelLeaveConfirm(true);
+  };
 
+  const closeCancelLeaveConfirm = () => {
+    if (cancelLeaveLoading) return;
+    setShowCancelLeaveConfirm(false);
+    setLeaveToCancel(null);
+  };
+
+  const confirmDeleteLeave = async () => {
+    if (!leaveToCancel) return;
     try {
-      await API.delete(`/driver/leave/${id}`);
-
-      setLeaves(leaves.filter((leave) => leave._id !== id));
+      setCancelLeaveLoading(true);
+      await API.delete(`/driver/leave/${leaveToCancel}`);
+      setLeaves((prevLeaves) =>
+        prevLeaves.filter((leave) => leave._id !== leaveToCancel),
+      );
+      toast.show({
+        type: "success",
+        title: "Leave Cancelled",
+        message: "Leave request cancelled successfully",
+      });
+      setShowCancelLeaveConfirm(false);
+      setLeaveToCancel(null);
     } catch (err) {
       toast.show({
         type: "error",
         title: "Delete Leave",
         message: err.response?.data?.message || "Failed to delete leave",
       });
+    } finally {
+      setCancelLeaveLoading(false);
     }
   };
 
@@ -900,6 +931,38 @@ function DriverDashboard() {
             </button>
           </Form>
         </Modal.Body>
+      </Modal>
+      <Modal
+        show={showCancelLeaveConfirm}
+        onHide={closeCancelLeaveConfirm}
+        centered
+        className="model-content"
+      >
+        <Modal.Header closeButton={!cancelLeaveLoading}>
+          <Modal.Title>Cancel Leave Request</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="mb-2">
+            <strong>Warning:</strong> This will cancel your pending leave request.
+          </p>
+          <p className="mb-0">Do you want to continue?</p>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={closeCancelLeaveConfirm}
+            disabled={cancelLeaveLoading}
+          >
+            No, Keep It
+          </Button>
+          <Button
+            className="soft-btn-danger"
+            onClick={confirmDeleteLeave}
+            disabled={cancelLeaveLoading}
+          >
+            {cancelLeaveLoading ? "Cancelling..." : "Yes, Cancel Leave"}
+          </Button>
+        </Modal.Footer>
       </Modal>
 
       {showNotifications && (

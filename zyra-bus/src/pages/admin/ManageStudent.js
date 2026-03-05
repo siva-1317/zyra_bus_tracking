@@ -7,7 +7,6 @@ import {
   Row,
   Col,
   Badge,
-  Alert,
   Card,
   Pagination,
 } from "react-bootstrap";
@@ -50,8 +49,6 @@ export default function ManageStudent() {
   const studentModalClose = () => setAddStudentModal(false);
 
   const [bulkStudentText, setBulkStudentText] = useState("");
-  const [bulkStudentError, setBulkStudentError] = useState("");
-  const [bulkStudentSummary, setBulkStudentSummary] = useState("");
   const [bulkLoading, setBulkLoading] = useState(false);
   const [selectedStudentRolls, setSelectedStudentRolls] = useState([]);
   const [bulkDeleteMode, setBulkDeleteMode] = useState("selected");
@@ -251,14 +248,15 @@ export default function ManageStudent() {
       .filter(Boolean);
 
     if (!lines.length) {
-      setBulkStudentError("Enter at least one student row.");
-      setBulkStudentSummary("");
+      toast.show({
+        type: "warning",
+        title: "Bulk Add Students",
+        message: "Enter at least one student row.",
+      });
       return;
     }
 
     setBulkLoading(true);
-    setBulkStudentError("");
-    setBulkStudentSummary("");
 
     let created = 0;
     let failed = 0;
@@ -292,9 +290,17 @@ export default function ManageStudent() {
 
     if (created > 0) fetchStudents();
 
-    setBulkStudentSummary(`Created ${created} students.`);
+    toast.show({
+      type: "success",
+      title: "Bulk Add Students",
+      message: `Created ${created} students.`,
+    });
     if (failed > 0) {
-      setBulkStudentError(`Failed ${failed} rows. Line numbers: ${failedLines.join(", ")}`);
+      toast.show({
+        type: "warning",
+        title: "Bulk Add Students",
+        message: `Failed ${failed} rows. Line numbers: ${failedLines.join(", ")}`,
+      });
     }
 
     setBulkLoading(false);
@@ -785,8 +791,6 @@ export default function ManageStudent() {
             Format: <code>rollNumber,name,department,year,phone</code>
           </div>
         </Form.Group>
-        {bulkStudentError && <Alert variant="warning" className="mt-3 mb-2">{bulkStudentError}</Alert>}
-        {bulkStudentSummary && <Alert variant="success" className="mt-3 mb-2">{bulkStudentSummary}</Alert>}
         <Button
           onClick={handleBulkStudentAdd}
           className="primary-btn mt-2"
