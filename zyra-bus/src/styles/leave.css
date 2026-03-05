@@ -1,0 +1,129 @@
+/* Container */
+.leave-container {
+  padding: 40px;
+}
+
+/* Header */
+.leave-header h2 {
+  font-weight: 600;
+}
+
+.leave-header p {
+  color: #6c757d;
+  margin-bottom: 30px;
+}
+
+/* Main Card */
+.leave-card {
+  background: rgba(255, 255, 255, 0.6);
+  backdrop-filter: blur(20px);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow: 0 20px 40px rgba(0,0,0,0.08);
+}
+
+/* Leave Row */
+.leave-row {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 18px;
+  border-radius: 15px;
+  margin-bottom: 15px;
+  background: rgba(255,255,255,0.5);
+  transition: 0.3s ease;
+}
+
+.leave-row:hover {
+  transform: translateY(-4px);
+  box-shadow: 0 10px 25px rgba(0,0,0,0.08);
+}
+
+/* Info Section */
+.leave-info {
+  flex: 3;
+}
+
+.driver-id {
+  margin-left: 8px;
+  color: #6c757d;
+  font-size: 14px;
+}
+
+.leave-dates {
+  font-size: 14px;
+  margin-top: 5px;
+  color: #555;
+}
+
+.leave-reason {
+  font-size: 14px;
+  margin-top: 4px;
+  color: #777;
+}
+
+/* Status */
+.leave-status {
+  flex: 1;
+  text-align: center;
+}
+
+/* Actions */
+.leave-actions {
+  flex: 1.5;
+  display: flex;
+  gap: 10px;
+  justify-content: center;
+}
+
+/* Buttons */
+.approve-btn {
+  background: linear-gradient(135deg,#4caf50,#7ed957);
+  border: none;
+}
+
+.reject-btn {
+  background: linear-gradient(135deg,#f44336,#ff6b6b);
+  border: none;
+}
+
+.approve-btn:hover,
+.reject-btn:hover {
+  opacity: 0.9;
+}
+
+/* Badges */
+.badge-approved {
+  background: #4caf50;
+}
+
+.badge-rejected {
+  background: #f44336;
+}
+
+.badge-pending {
+  background: #ff9800;
+}
+
+/* Empty */
+.empty-state {
+  text-align: center;
+  padding: 30px;
+  color: #888;
+}
+
+/* Mobile */
+@media (max-width: 768px) {
+
+  .leave-row {
+    flex-direction: column;
+    align-items: flex-start;
+  }
+
+  .leave-actions {
+    margin-top: 10px;
+    width: 100%;
+    justify-content: flex-start;
+  }
+
+}

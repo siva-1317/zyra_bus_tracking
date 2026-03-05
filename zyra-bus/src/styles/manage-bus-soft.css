@@ -1,0 +1,272 @@
+.manage-bus-container {
+  max-width: 1400px;
+  margin: auto;
+  padding: 20px;
+}
+
+.page-title {
+  margin-bottom: 30px;
+  font-weight: 600;
+}
+
+.glass-card {
+  padding: 30px;
+  border-radius: 18px;
+  border: none;
+  background: rgba(255, 255, 255, 0.6) !important;
+  backdrop-filter: blur(10px);
+  box-shadow: 0 15px 35px rgba(0,0,0,0.05);
+}
+
+.section-title {
+  margin-bottom: 20px;
+  font-weight: 600;
+}
+
+.primary-btn {
+  background: linear-gradient(135deg, #4fa3d1, #2d7ff9);
+  border: none;
+  border-radius: 10px;
+  padding: 10px;
+  font-weight: 500;
+}
+
+.primary-btn-sm {
+  background: #4fa3d1;
+  border: none;
+  border-radius: 8px;
+  padding: 5px 10px;
+  color: white;
+}
+
+.badge-success-soft {
+  background: rgba(40,167,69,0.2);
+  color: #1e7e34;
+  padding: 6px 10px;
+  border-radius: 20px;
+}
+
+.badge-secondary-soft {
+  background: rgba(108,117,125,0.2);
+  color: #495057;
+  padding: 6px 10px;
+  border-radius: 20px;
+}
+
+.table-wrapper {
+  overflow-x: auto;
+}
+
+.map-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-bottom: 16px;
+}
+
+.map-filters {
+  display: flex;
+  gap: 12px;
+  flex-wrap: wrap;
+}
+
+.live-map {
+  height: 420px;
+  border-radius: 16px;
+  overflow: hidden;
+  border: 1px solid rgba(0,0,0,0.06);
+}
+
+.leaflet-container {
+  height: 100%;
+  width: 100%;
+}
+
+.bus-path-label {
+  background: rgba(255,255,255,0.9) !important;
+  border: 1px solid rgba(0,0,0,0.08);
+  color: #2a2a2f;
+  font-weight: 600;
+  padding: 2px 6px;
+  border-radius: 8px;
+  box-shadow: 0 6px 12px rgba(0,0,0,0.08);
+}
+
+.stop-card {
+  padding: 15px;
+  border-radius: 15px;
+  background: rgba(255,255,255,0.8);
+  border: none;
+}
+
+@media (max-width: 768px) {
+  .glass-card {
+    padding: 20px;
+  }
+}
+
+
+/* =============================
+   SOFT GLASS MODAL
+============================= */
+
+.glass-modal .modal-content {
+  background: rgba(255, 255, 255, 0.92);
+  backdrop-filter: blur(18px);
+  border-radius: 24px;
+  border: none;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.12);
+}
+
+.glass-modal-header {
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+  padding: 25px 35px 15px 35px;
+}
+
+.glass-modal-body {
+  padding: 25px 35px;
+}
+
+.glass-modal-footer {
+  border-top: 1px solid rgba(0,0,0,0.05);
+  padding: 20px 35px 30px 35px;
+}
+
+/* =============================
+   INPUTS (SOFT)
+============================= */
+
+.input-soft {
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.08);
+  padding: 10px 14px;
+  transition: 0.2s ease;
+}
+
+.input-soft:focus {
+  border-color: #4fa3d1;
+  box-shadow: 0 0 0 3px rgba(79,163,209,0.15);
+}
+
+/* =============================
+   STOPS SECTION
+============================= */
+
+.stops-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.stop-glass-card {
+  padding: 18px 20px;
+  border-radius: 18px;
+  background: #ffffff;
+  border: 1px solid rgba(0,0,0,0.04);
+  box-shadow: 0 8px 20px rgba(0,0,0,0.04);
+  transition: 0.2s ease;
+}
+
+.stop-glass-card:hover {
+  transform: translateY(-2px);
+}
+
+.stop-drag-over {
+  border-color: #4fa3d1;
+  box-shadow: 0 10px 24px rgba(79, 163, 209, 0.18);
+}
+
+.stop-index-chip {
+  display: inline-block;
+  min-width: 44px;
+  text-align: center;
+  border-radius: 999px;
+  background: rgba(79, 163, 209, 0.15);
+  color: #1c5f7e;
+  font-weight: 600;
+  padding: 6px 10px;
+}
+
+.bulk-stop-box {
+  background: rgba(79, 163, 209, 0.06);
+  border: 1px solid rgba(79, 163, 209, 0.2);
+  border-radius: 14px;
+  padding: 14px;
+}
+
+.bulk-stop-help {
+  margin-top: 8px;
+  color: #5f6870;
+  font-size: 13px;
+}
+
+.reorder-stop-btn {
+  background: rgba(79, 163, 209, 0.14);
+  color: #1c5f7e;
+  border: none;
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+
+.reorder-stop-btn:disabled {
+  opacity: 0.5;
+}
+
+/* =============================
+   BUTTONS (SOFT)
+============================= */
+
+.add-stop-btn {
+  background: linear-gradient(135deg, #4fa3d1, #2d7ff9);
+  border: none;
+  border-radius: 10px;
+  padding: 6px 14px;
+  font-weight: 500;
+}
+
+.delete-stop-btn {
+  background: #e63946;
+  border: none;
+  border-radius: 10px;
+  padding: 6px 10px;
+}
+
+.delete-stop-btn:hover {
+  opacity: 0.85;
+}
+
+.delete-bus-btn {
+  background: rgba(230,57,70,0.1);
+  color: #e63946;
+  border: none;
+  border-radius: 12px;
+  padding: 8px 18px;
+}
+
+.secondary-btn-soft {
+  background: rgba(0,0,0,0.06);
+  border: none;
+  border-radius: 12px;
+  padding: 8px 18px;
+}
+
+/* =============================
+   MOBILE IMPROVEMENT
+============================= */
+
+@media (max-width: 768px) {
+
+  .glass-modal-body {
+    padding: 20px;
+  }
+
+  .glass-modal-footer {
+    padding: 20px;
+  }
+
+  .stop-glass-card {
+    padding: 15px;
+  }
+}

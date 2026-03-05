@@ -1,0 +1,260 @@
+/* ===============================
+   GLOBAL BACKGROUND
+================================= */
+
+.admin-bg {
+  background: linear-gradient(145deg, #e6eef5, #d6e2f0);
+  min-height: 100vh;
+  overflow-x: hidden;
+}
+
+
+/* ===============================
+   SIDEBAR (DESKTOP)
+================================= */
+
+.sidebar-glass {
+  position: fixed;
+  top: 0;
+  left: 0;
+  width: 16.6667%; /* same as col-lg-2 */
+  height: 100vh;
+  padding: 30px 20px;
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(15px);
+  border-right: 1px solid rgba(255, 255, 255, 0.4);
+  overflow-y: auto;
+  z-index: 1000;
+  display: flex;
+  flex-direction: column;
+}
+
+/* Sidebar Header */
+.sidebar-header {
+  margin-bottom: 35px;
+  font-weight: 600;
+  padding-left: 15px;
+}
+
+
+/* ===============================
+   NAV ITEMS
+================================= */
+
+.nav-item {
+  display: flex;
+  align-items: center;
+  padding: 12px 15px;
+  margin-bottom: 10px;
+  border-radius: 12px;
+  text-decoration: none;
+  color: #5a6b7b;
+  transition: all 0.3s ease;
+  font-weight: 500;
+}
+
+.nav-item:hover {
+  background: rgba(255, 255, 255, 0.4);
+  transform: translateX(4px);
+}
+
+.active-nav {
+  background: rgba(79, 163, 209, 0.25);
+  font-weight: 600;
+  color: #2c3e50;
+}
+
+.nav-icon {
+  margin-right: 12px;
+  font-size: 16px;
+}
+
+.nav-section {
+  flex: 1;
+}
+
+.sidebar-footer {
+  margin-top: 12px;
+  display: flex;
+  justify-content: center;
+}
+
+
+/* ===============================
+   MAIN CONTENT
+================================= */
+
+.main-content-glass {
+  margin-left: 16.6667%;
+  padding: 50px 60px;
+}
+
+
+/* ===============================
+   TOP NAVBAR (GLASS STYLE)
+================================= */
+
+.top-navbar-glass {
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border-radius: 15px;
+  padding: 15px 25px;
+  margin-bottom: 40px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.navbar-left {
+  display: flex;
+  align-items: center;
+  gap: 15px;
+}
+
+.top-actions {
+  display: flex;
+  align-items: center;
+}
+
+.logout-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 8px 12px;
+  min-width: 112px;
+  font-weight: 600;
+  color: #ffffff;
+  background: linear-gradient(135deg, #4fa3d1, #2d7ff9);
+  cursor: pointer;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+}
+
+.logout-btn:hover {
+  opacity: 0.92;
+}
+
+.top-icon {
+  font-size: 18px;
+  margin-left: 20px;
+  cursor: pointer;
+  transition: 0.2s ease;
+}
+
+.top-icon:hover {
+  transform: scale(1.1);
+}
+
+.profile-icon {
+  font-size: 28px;
+}
+
+.logout-overlay {
+  position: fixed;
+  inset: 0;
+  background: rgba(0, 0, 0, 0.28);
+  backdrop-filter: blur(2px);
+  z-index: 2000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.logout-card {
+  min-width: 220px;
+  padding: 22px 24px;
+  border-radius: 16px;
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 18px 38px rgba(0, 0, 0, 0.18);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 10px;
+}
+
+.logout-spinner {
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  border: 3px solid rgba(79, 163, 209, 0.28);
+  border-top-color: #2d7ff9;
+  animation: logout-spin 0.9s linear infinite;
+}
+
+.logout-text {
+  font-weight: 600;
+  color: #3b4f63;
+}
+
+@keyframes logout-spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+
+/* ===============================
+   CONTENT AREA
+================================= */
+
+.content-area {
+  padding-top: 10px;
+}
+
+
+/* ===============================
+   MOBILE TOGGLE BUTTON
+================================= */
+
+.mobile-toggle {
+  display: none;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+
+/* ===============================
+   MOBILE RESPONSIVE SIDEBAR
+================================= */
+
+@media (max-width: 768px) {
+
+  .sidebar-glass {
+    position: fixed !important;
+    top: 0;
+    left: 0;
+    width: 260px;
+    height: 100vh;
+    transform: translateX(-100%);
+    z-index: 1050;
+    transition: transform 0.3s ease;
+  }
+
+  .sidebar-open {
+    transform: translateX(0);
+  }
+
+  .sidebar-overlay {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.35);
+    z-index: 1040;
+  }
+
+  .mobile-toggle {
+    display: block;
+  }
+
+  .main-content-glass {
+    margin-left: 0 !important;   /* 🔥 THIS FIXES IT */
+    padding: 20px 16px 30px 16px;
+  }
+  .top-navbar-glass {
+    padding: 12px 16px;
+    margin-bottom: 30px;
+    border-radius: 12px;
+  }
+
+}

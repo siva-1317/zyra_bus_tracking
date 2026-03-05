@@ -1,0 +1,121 @@
+/* ===============================
+   CONTAINER
+================================= */
+
+.feedback-container {
+  padding: 20px;
+}
+
+.page-title {
+  font-weight: 600;
+  margin-bottom: 25px;
+}
+
+/* ===============================
+   GLASS CARD
+================================= */
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.35);
+  backdrop-filter: blur(12px);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+/* ===============================
+   TABLE
+================================= */
+
+.table-soft {
+  border-collapse: separate;
+  border-spacing: 0 10px;
+}
+
+.table-soft tbody tr {
+  background: rgba(255,255,255,0.6);
+  border-radius: 12px;
+  transition: 0.2s ease;
+}
+
+.table-soft tbody tr:hover {
+  transform: scale(1.01);
+  box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+}
+
+.table-soft th {
+  font-weight: 600;
+  border: none;
+}
+
+.table-soft td {
+  vertical-align: middle;
+  border-top: none;
+  padding: 12px;
+}
+
+/* ===============================
+   STATUS BADGES
+================================= */
+
+.badge-pending {
+  background: rgba(255, 193, 7, 0.2);
+  color: #b8860b;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+.badge-reviewed {
+  background: rgba(40, 167, 69, 0.2);
+  color: #198754;
+  padding: 6px 12px;
+  border-radius: 20px;
+  font-weight: 500;
+}
+
+/* ===============================
+   BUTTON
+================================= */
+
+.primary-btn-sm {
+  background: linear-gradient(135deg, #4fa3d1, #2b6cb0);
+  border: none;
+  border-radius: 10px;
+  padding: 5px 12px;
+  font-size: 13px;
+}
+
+.primary-btn-sm:hover {
+  opacity: 0.9;
+}
+
+/* ===============================
+   TEXT
+================================= */
+
+.reviewed-text {
+  color: #198754;
+  font-weight: 500;
+}
+
+.message-cell {
+  max-width: 350px;
+  word-break: break-word;
+}
+
+/* ===============================
+   MOBILE
+================================= */
+
+@media (max-width: 768px) {
+
+  .feedback-container {
+    padding: 12px;
+  }
+
+  .table-soft td {
+    font-size: 14px;
+  }
+
+}

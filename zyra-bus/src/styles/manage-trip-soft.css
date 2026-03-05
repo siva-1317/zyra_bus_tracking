@@ -1,0 +1,171 @@
+/* ===============================
+   PAGE CONTAINER
+================================= */
+
+.trip-container {
+  padding: 20px;
+}
+
+.page-title {
+  font-weight: 600;
+  margin-bottom: 25px;
+}
+
+/* ===============================
+   GLASS CARD
+================================= */
+
+.glass-card {
+  background: rgba(255, 255, 255, 0.35) !important;
+  backdrop-filter: blur(12px);
+  border-radius: 18px;
+  border: 1px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 8px 24px rgba(0, 0, 0, 0.06);
+}
+
+/* ===============================
+   INPUT STYLE
+================================= */
+
+.input-soft {
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.08);
+  padding: 10px 14px;
+}
+
+.input-soft:focus {
+  border-color: #4fa3d1;
+  box-shadow: 0 0 0 3px rgba(79,163,209,0.15);
+}
+
+/* ===============================
+   TABLE STYLE
+================================= */
+
+.table-soft {
+  border-collapse: separate;
+  border-spacing: 0 10px;
+}
+
+.table-soft tbody tr {
+  background: rgba(255,255,255,0.6);
+  border-radius: 12px;
+}
+
+.table-soft th {
+  font-weight: 600;
+  border: none;
+}
+
+.table-soft td {
+  vertical-align: middle;
+  border-top: none;
+}
+
+/* ===============================
+   BUTTONS
+================================= */
+
+.primary-btn {
+  background: linear-gradient(135deg, #4fa3d1, #2b6cb0);
+  border: none;
+  border-radius: 12px;
+  padding: 8px 18px;
+}
+
+.primary-btn:hover {
+  opacity: 0.9;
+}
+
+.danger-btn-sm {
+  background: #e74c3c;
+  border: none;
+  border-radius: 8px;
+  padding: 4px 10px;
+  font-size: 13px;
+}
+
+.neo-soft-btn {
+  border: none;
+  border-radius: 10px;
+  padding: 6px 12px;
+  font-size: 13px;
+  color: #334155;
+  background: #e0e5ec;
+  box-shadow:
+    4px 4px 10px #a3b1c6,
+    -4px -4px 10px #ffffff;
+  transition: 0.2s ease;
+}
+
+.neo-soft-btn:hover {
+  transform: translateY(-1px);
+}
+
+.neo-soft-btn:active {
+  box-shadow:
+    inset 3px 3px 8px #a3b1c6,
+    inset -3px -3px 8px #ffffff;
+}
+
+.neo-edit-btn {
+  color: #0f4ea8;
+}
+
+.neo-delete-btn {
+  color: #b42318;
+}
+
+.danger-btn {
+  background: #e74c3c;
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+}
+
+.secondary-btn {
+  background: rgba(0,0,0,0.06);
+  border: none;
+  border-radius: 10px;
+  padding: 8px 16px;
+}
+
+/* ===============================
+   TABS
+================================= */
+
+.custom-tabs .nav-link {
+  border-radius: 12px;
+  margin-right: 8px;
+}
+
+.custom-tabs .nav-link.active {
+  background: rgba(79,163,209,0.2);
+  font-weight: 600;
+}
+
+.glass-modal .modal-content {
+  border-radius: 20px;
+  background: rgba(255,255,255,0.95) !important;
+  backdrop-filter: blur(16px);
+  border: none;
+  box-shadow: 0 24px 64px rgba(0,0,0,0.14);
+}
+
+/* ===============================
+   MOBILE RESPONSIVE
+================================= */
+
+@media (max-width: 768px) {
+  .trip-container {
+    padding: 10px;
+  }
+
+  .glass-card {
+    padding: 15px !important;
+  }
+
+  .primary-btn {
+    width: 100%;
+  }
+}

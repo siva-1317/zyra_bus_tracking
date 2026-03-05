@@ -1,0 +1,142 @@
+/* PAGE */
+.driver-page {
+  padding: 20px;
+}
+
+.page-title {
+  margin-bottom: 30px;
+  font-weight: 600;
+}
+
+/* GLASS CARD */
+.glass-card {
+  padding: 30px;
+  border-radius: 20px;
+  background: rgba(255,255,255,0.9);
+  backdrop-filter: blur(12px);
+  border: none;
+  box-shadow: 0 20px 50px rgba(0,0,0,0.08);
+}
+
+/* INPUTS */
+.input-soft {
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.08);
+  padding: 10px 14px;
+}
+
+.input-soft:focus {
+  border-color: #4fa3d1;
+  box-shadow: 0 0 0 3px rgba(79,163,209,0.15);
+}
+
+/* TABLE */
+.table-soft thead {
+  background: rgba(0,0,0,0.03);
+}
+
+.table-soft tbody tr {
+  transition: 0.2s ease;
+}
+
+.table-soft tbody tr:hover {
+  background: rgba(79,163,209,0.05);
+}
+
+/* BUTTONS */
+.primary-btn {
+  background: linear-gradient(135deg,#4fa3d1,#2d7ff9);
+  border: none;
+  border-radius: 12px;
+  padding: 8px 18px;
+}
+
+.secondary-btn {
+  background: rgba(0,0,0,0.06);
+  border: none;
+  border-radius: 12px;
+}
+
+.warning-btn {
+  background: #f4a261;
+  border: none;
+  border-radius: 12px;
+}
+
+.danger-btn {
+  background: #e63946;
+  border: none;
+  border-radius: 12px;
+}
+
+/* MODAL */
+.glass-modal .modal-content {
+  border-radius: 24px;
+  background: rgba(255,255,255,0.95) !important;
+  backdrop-filter: blur(18px);
+  border: none;
+  box-shadow: 0 30px 80px rgba(0,0,0,0.15);
+}
+
+/* MOBILE */
+@media (max-width: 768px) {
+  .glass-card {
+    padding: 20px;
+  }
+
+  .primary-btn {
+    width: 100%;
+  }
+}
+
+/* MODAL BODY STRUCTURE */
+.modal-body-wrapper {
+  display: flex;
+  flex-direction: column;
+  gap: 30px;
+}
+
+.modal-section {
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(0,0,0,0.05);
+}
+
+.modal-section:last-child {
+  border-bottom: none;
+}
+
+.section-heading {
+  font-weight: 600;
+  margin-bottom: 15px;
+  color: #444;
+}
+
+/* Better footer spacing */
+.glass-modal .modal-footer {
+  justify-content: space-between;
+}
+
+/* Danger area */
+.danger-section {
+  display: flex;
+  justify-content: flex-start;
+}
+
+/* Responsive improvements */
+@media (max-width: 768px) {
+
+  .modal-section {
+    gap: 15px;
+  }
+
+  .modal-body-wrapper {
+    gap: 25px;
+  }
+
+  .primary-btn,
+  .warning-btn,
+  .secondary-btn,
+  .danger-btn {
+    width: 100%;
+  }
+}

@@ -1,0 +1,12 @@
+{
+  "drivers": [
+    {
+      "id": "d",
+      "password": "1",
+      "role": "Driver",
+      "name": "Kishore A",
+      "busNo": 17,
+      "phone": "9123456789"
+    }
+  ]
+}

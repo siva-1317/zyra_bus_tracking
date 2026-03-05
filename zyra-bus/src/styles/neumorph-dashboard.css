@@ -1,0 +1,538 @@
+/* ============================= */
+/* BASE BACKGROUND */
+/* ============================= */
+body {
+  background: #e0e5ec;
+  font-family: "Segoe UI", sans-serif;
+  margin: 0;
+}
+
+/* ============================= */
+/* MAIN CONTAINER */
+/* ============================= */
+.neo-dashboard {
+  padding: 40px;
+}
+
+.neo-heading {
+  margin-bottom: 40px;
+  font-weight: 600;
+  color: #555;
+  text-align: center;
+}
+
+/* ============================= */
+/* CIRCLE WRAPPER */
+/* ============================= */
+.neo-circle-wrapper {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-bottom: 30px;
+}
+
+/* Raised circle */
+.neo-circle-raised {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  background: #e0e5ec;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 32px;
+  font-weight: bold;
+
+  box-shadow:
+    10px 10px 20px #a3b1c6,
+    -10px -10px 20px #ffffff;
+}
+
+/* Progress circle */
+.neo-circle-progress {
+  width: 150px;
+  height: 150px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.neo-circle-inner {
+  width: 120px;
+  height: 120px;
+  border-radius: 50%;
+  background: #e0e5ec;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: bold;
+  font-size: 22px;
+
+  box-shadow:
+    inset 6px 6px 12px #a3b1c6,
+    inset -6px -6px 12px #ffffff;
+}
+
+/* ============================= */
+/* PANELS */
+/* ============================= */
+.neo-panel {
+  padding: 30px;
+  border-radius: 20px;
+  background: #e0e5ec;
+  margin-bottom: 30px;
+
+  box-shadow:
+    10px 10px 20px #a3b1c6,
+    -10px -10px 20px #ffffff;
+}
+
+.neo-panel h5 {
+  margin-bottom: 20px;
+}
+
+.neo-row {
+  display: flex;
+  justify-content: space-between;
+  margin-bottom: 15px;
+  color: #555;
+  font-size: 15px;
+}
+
+.neo-subheading {
+  margin: 14px 0 10px;
+  font-size: 14px;
+  color: #5f6570;
+}
+
+.neo-chip-wrap {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin-bottom: 6px;
+}
+
+.neo-chip {
+  padding: 6px 10px;
+  border-radius: 999px;
+  background: #e0e5ec;
+  color: #4f5662;
+  font-size: 12px;
+  box-shadow:
+    4px 4px 8px #a3b1c6,
+    -4px -4px 8px #ffffff;
+}
+
+.neo-list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  max-height: 260px;
+  overflow-y: auto;
+  padding-right: 4px;
+}
+
+.neo-list-item {
+  padding: 10px 12px;
+  border-radius: 12px;
+  background: #e0e5ec;
+  color: #4f5662;
+  font-size: 13px;
+  box-shadow:
+    inset 3px 3px 6px #a3b1c6,
+    inset -3px -3px 6px #ffffff;
+}
+
+.neo-muted {
+  color: #7b838f;
+  font-size: 13px;
+}
+
+/* ============================= */
+/* LOADING */
+/* ============================= */
+.neo-loading {
+  padding: 40px;
+  font-size: 18px;
+  text-align: center;
+}
+
+.neo-loading-wrap {
+  min-height: 80vh;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 14px;
+  padding: 28px;
+}
+
+.neo-loading-title {
+  color: #4f5662;
+  font-weight: 600;
+  margin-bottom: 8px;
+}
+
+.neo-bus-loader {
+  position: relative;
+  width: 260px;
+  height: 64px;
+}
+
+.neo-bus-icon {
+  position: absolute;
+  left: 0;
+  top: 8px;
+  width: 76px;
+  height: 34px;
+  animation: neo-bus-move 2.6s linear infinite;
+}
+
+.neo-bus-body {
+  width: 76px;
+  height: 30px;
+  background: linear-gradient(135deg, #4fa3d1, #2d7ff9);
+  border-radius: 8px;
+  box-shadow:
+    6px 6px 12px #a3b1c6,
+    -6px -6px 12px #ffffff;
+}
+
+.neo-bus-window {
+  position: absolute;
+  top: 6px;
+  left: 13px;
+  width: 32px;
+  height: 12px;
+  background: rgba(255,255,255,0.78);
+  border-radius: 4px;
+}
+
+.neo-bus-wheel {
+  position: absolute;
+  bottom: -6px;
+  width: 14px;
+  height: 14px;
+  background: #3d424a;
+  border-radius: 50%;
+  box-shadow: inset 2px 2px 4px rgba(0,0,0,0.25);
+}
+
+.neo-bus-wheel.neo-left { left: 10px; }
+.neo-bus-wheel.neo-right { right: 10px; }
+
+.neo-bus-track {
+  position: absolute;
+  left: 0;
+  right: 0;
+  bottom: 8px;
+  height: 6px;
+  border-radius: 999px;
+  background: #d5dbe3;
+  overflow: hidden;
+  box-shadow:
+    inset 3px 3px 6px rgba(163,177,198,0.65),
+    inset -3px -3px 6px rgba(255,255,255,0.8);
+}
+
+.neo-loading-steps {
+  width: min(560px, 94vw);
+  border-radius: 16px;
+  background: #e0e5ec;
+  padding: 14px;
+  box-shadow:
+    inset 4px 4px 8px #a3b1c6,
+    inset -4px -4px 8px #ffffff;
+}
+
+.neo-loading-step {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  color: #7c8592;
+  font-size: 14px;
+  padding: 6px 2px;
+}
+
+.neo-loading-step.active {
+  color: #2d7ff9;
+  font-weight: 600;
+}
+
+.neo-step-dot {
+  width: 9px;
+  height: 9px;
+  border-radius: 50%;
+  background: #b0b7c2;
+}
+
+.neo-loading-step.active .neo-step-dot {
+  background: #2d7ff9;
+}
+
+/* ============================= */
+/* CALENDAR */
+/* ============================= */
+.neo-calendar-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 12px;
+  flex-wrap: wrap;
+  margin-bottom: 14px;
+}
+
+.neo-calendar-controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.neo-clear-row {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+}
+
+.neo-clear-footer {
+  display: flex;
+  justify-content: flex-end;
+}
+
+.neo-calendar-select {
+  min-width: 130px;
+  border-radius: 12px;
+  border: 1px solid rgba(0,0,0,0.08);
+  background: #eef2f7;
+}
+
+.neo-calendar-grid {
+  display: grid;
+  grid-template-columns: repeat(7, minmax(0, 1fr));
+  gap: 10px;
+}
+
+.neo-calendar-weekdays {
+  margin-bottom: 10px;
+}
+
+.neo-weekday {
+  text-align: center;
+  font-size: 12px;
+  color: #6d7683;
+  font-weight: 600;
+}
+
+.neo-day-card {
+  border-radius: 14px;
+  padding: 10px;
+  min-height: 148px;
+  background: #e0e5ec;
+  box-shadow:
+    inset 3px 3px 7px #a3b1c6,
+    inset -3px -3px 7px #ffffff;
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+}
+
+.neo-day-card.today {
+  border: 1px solid rgba(45, 127, 249, 0.4);
+}
+
+.neo-day-empty {
+  min-height: 148px;
+}
+
+.neo-day-top {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+}
+
+.neo-note-count {
+  font-size: 11px;
+  color: #2d7ff9;
+  background: rgba(45, 127, 249, 0.12);
+  border-radius: 999px;
+  padding: 2px 8px;
+}
+
+.neo-day-number {
+  font-weight: 700;
+  color: #495160;
+}
+
+.neo-day-metrics {
+  margin-top: 8px;
+  display: grid;
+  gap: 5px;
+  font-size: 12px;
+  color: #586271;
+}
+
+.neo-calendar-view-btn {
+  border: none;
+  border-radius: 10px;
+  background: linear-gradient(135deg, #4fa3d1, #2d7ff9);
+}
+
+.neo-day-actions {
+  display: flex;
+  gap: 6px;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+}
+
+.neo-calendar-note-btn {
+  border: none;
+  border-radius: 10px;
+  background: rgba(79, 163, 209, 0.2);
+  color: #1d5670;
+}
+
+.neo-icon-btn {
+  width: 28px;
+  height: 28px;
+  min-width: 28px;
+  padding: 0;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  line-height: 1;
+  font-size: 12px;
+}
+
+.neo-day-summary {
+  border-radius: 12px;
+  padding: 12px;
+  background: rgba(79,163,209,0.08);
+}
+
+.neo-trip-title {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 6px;
+  gap: 8px;
+  flex-wrap: wrap;
+}
+
+.neo-day-notes {
+  padding: 12px;
+  border-radius: 12px;
+  background: rgba(79,163,209,0.08);
+}
+
+.neo-note-item-head {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 6px;
+}
+
+.neo-note-delete-btn {
+  border: none;
+  border-radius: 8px;
+  background: rgba(230, 57, 70, 0.18);
+  color: #8d1f28;
+}
+
+@keyframes neo-bus-move {
+  0% { left: 0; }
+  50% { left: calc(100% - 78px); }
+  100% { left: 0; }
+}
+
+/* ============================= */
+/* 📱 MOBILE RESPONSIVE */
+/* ============================= */
+@media (max-width: 992px) {
+
+  .neo-dashboard {
+    padding: 25px;
+  }
+
+  .neo-heading {
+    font-size: 22px;
+  }
+
+  .neo-circle-raised,
+  .neo-circle-progress {
+    width: 120px;
+    height: 120px;
+  }
+
+  .neo-circle-inner {
+    width: 95px;
+    height: 95px;
+    font-size: 18px;
+  }
+
+}
+
+@media (max-width: 768px) {
+
+  .neo-dashboard {
+    padding: 20px;
+  }
+
+  .neo-circle-raised,
+  .neo-circle-progress {
+    width: 110px;
+    height: 110px;
+  }
+
+  .neo-circle-inner {
+    width: 85px;
+    height: 85px;
+    font-size: 16px;
+  }
+
+  .neo-panel {
+    padding: 20px;
+  }
+
+  .neo-row {
+    font-size: 14px;
+  }
+
+  .neo-calendar-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+}
+
+@media (max-width: 576px) {
+
+  .neo-dashboard {
+    padding: 15px;
+  }
+
+  .neo-heading {
+    font-size: 20px;
+  }
+
+  .neo-circle-raised,
+  .neo-circle-progress {
+    width: 95px;
+    height: 95px;
+  }
+
+  .neo-circle-inner {
+    width: 70px;
+    height: 70px;
+    font-size: 14px;
+  }
+
+  .neo-panel {
+    padding: 18px;
+  }
+
+  .neo-calendar-grid {
+    grid-template-columns: 1fr;
+  }
+
+}

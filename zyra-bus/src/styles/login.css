@@ -1,0 +1,227 @@
+/* ===============================
+   BACKGROUND
+================================= */
+
+.login-bg {
+  height: 100vh;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+
+  background: linear-gradient(
+    135deg,
+    #f3e8ff 0%,
+    #e9d5ff 40%,
+    #ddd6fe 100%
+  );
+
+  position: relative;
+  overflow: hidden;
+}
+
+.login-loading {
+  position: absolute;
+  inset: 0;
+  background: rgba(236, 211, 255, 0.45);
+  backdrop-filter: blur(6px);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  z-index: 5;
+}
+
+.login-loading-card {
+  width: 320px;
+  background: rgba(255, 255, 255, 0.35);
+  border-radius: 20px;
+  padding: 20px;
+  box-shadow:
+    10px 10px 20px rgba(168, 85, 247, 0.25),
+    -8px -8px 16px rgba(255, 255, 255, 0.8);
+  border: 1px solid rgba(255, 255, 255, 0.5);
+}
+
+.login-loading-title {
+  font-weight: 700;
+  margin-bottom: 12px;
+  color: #5b21b6;
+}
+
+.login-loading-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  font-size: 13px;
+}
+
+.login-step {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  color: #7c3aed;
+  opacity: 0.6;
+}
+
+.login-step.active {
+  opacity: 1;
+  font-weight: 600;
+}
+
+/* Floating light blobs */
+.login-bg::before,
+.login-bg::after {
+  content: "";
+  position: absolute;
+  width: 400px;
+  height: 400px;
+  background: radial-gradient(circle, rgba(168,85,247,0.4), transparent 70%);
+  filter: blur(80px);
+  z-index: 0;
+}
+
+.login-bg::before {
+  top: -100px;
+  left: -100px;
+}
+
+.login-bg::after {
+  bottom: -120px;
+  right: -120px;
+}
+
+/* ===============================
+   GLASS CARD (3D EFFECT)
+================================= */
+
+.login-card {
+  width: 420px;
+  padding: 40px;
+
+  background: rgba(255, 255, 255, 0.25);
+  backdrop-filter: blur(25px);
+  -webkit-backdrop-filter: blur(25px);
+
+  border-radius: 28px;
+
+  border: 1px solid rgba(255, 255, 255, 0.4);
+
+  box-shadow:
+    0 20px 60px rgba(168, 85, 247, 0.25),
+    inset 0 1px 0 rgba(255,255,255,0.6),
+    inset 0 -1px 0 rgba(255,255,255,0.2);
+
+  position: relative;
+  z-index: 2;
+
+  transform: perspective(1200px) rotateX(3deg);
+  transition: 0.4s ease;
+}
+
+.login-card:hover {
+  transform: perspective(1200px) rotateX(0deg) scale(1.02);
+}
+
+/* ===============================
+   TEXT
+================================= */
+
+.login-title {
+  font-weight: 600;
+  font-size: 26px;
+}
+
+.brand-text {
+  color: #a855f7;
+  font-weight: 900;
+  font-size: 48px;
+  text-shadow: 0 4px 12px rgba(168,85,247,0.4);
+}
+
+.login-subtitle {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+/* ===============================
+   INPUTS (SOFT 3D)
+================================= */
+
+.input-soft {
+  border-radius: 16px;
+  padding: 12px 16px;
+
+  background: rgba(255,255,255,0.4);
+  border: 1px solid rgba(255,255,255,0.6);
+
+  box-shadow:
+    inset 0 2px 6px rgba(0,0,0,0.05),
+    0 4px 10px rgba(168,85,247,0.1);
+
+  transition: 0.3s ease;
+}
+
+.input-soft:focus {
+  border-color: #c084fc;
+  box-shadow:
+    0 0 0 4px rgba(168,85,247,0.2),
+    inset 0 2px 6px rgba(0,0,0,0.05);
+}
+
+/* ===============================
+   BUTTON (3D SOFT PURPLE)
+================================= */
+
+.login-btn {
+  background: linear-gradient(
+    135deg,
+    #d8b4fe,
+    #a855f7,
+    #7c3aed
+  );
+
+  border: none;
+  border-radius: 16px;
+  padding: 12px;
+  font-weight: 600;
+  color: white;
+
+  box-shadow:
+    0 8px 20px rgba(168,85,247,0.4),
+    inset 0 1px 0 rgba(255,255,255,0.4);
+
+  transition: all 0.3s ease;
+}
+
+.login-btn:hover {
+  transform: translateY(-3px);
+  box-shadow:
+    0 12px 28px rgba(168,85,247,0.5);
+}
+
+/* ===============================
+   LINK
+================================= */
+
+.create-link {
+  color: #7c3aed;
+  font-weight: 600;
+  text-decoration: none;
+}
+
+.create-link:hover {
+  text-decoration: underline;
+}
+
+/* ===============================
+   MOBILE
+================================= */
+
+@media (max-width: 768px) {
+
+  .login-card {
+    width: 90%;
+    padding: 30px;
+    transform: none;
+  }
+
+}
