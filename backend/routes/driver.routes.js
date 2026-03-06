@@ -12,6 +12,7 @@ const Feedback = require("../models/Feedback");
 const BusComplaint = require("../models/BusComplaint");
 const auth = require("../middleware/auth.middleware");
 const allowRoles = require("../middleware/role.middleware");
+const { enrichBusWithStopCoords } = require("../utils/stop-utils");
 
 const complaintUploadDir = path.join("uploads", "bus-complaints");
 if (!fs.existsSync(complaintUploadDir)) {
@@ -48,10 +49,11 @@ router.get(
       const bus = driver.assignedBus
         ? await Bus.findOne({ busNo: driver.assignedBus })
         : null;
+      const enrichedBus = await enrichBusWithStopCoords(bus);
 
       res.json({
         driver,
-        bus
+        bus: enrichedBus
       });
     } catch (error) {
       res.status(500).json({ message: error.message });
@@ -222,6 +224,7 @@ router.get(
       if (!bus) {
         return res.status(404).json({ message: "Bus not found" });
       }
+      const enrichedBus = await enrichBusWithStopCoords(bus);
 
       const now = Date.now();
 
@@ -254,7 +257,7 @@ router.get(
         );
 
         etaList.push({
-          stop: bus.stops[i],
+          stop: enrichedBus.stops[i],
           eta: etaTime,
           status
         });
@@ -269,8 +272,8 @@ router.get(
         busNo,
         direction: trip.direction,
         status: trip.status,
-        currentStop: bus.stops[currentIndex],
-        nextStop: bus.stops[currentIndex + 1] || null,
+        currentStop: enrichedBus.stops[currentIndex],
+        nextStop: enrichedBus.stops[currentIndex + 1] || null,
         currentStopIndex: currentIndex,
         progressPercent,
         eta: etaList
@@ -387,6 +390,7 @@ router.get(
       }
 
       const bus = await Bus.findOne({ busNo: driver.assignedBus });
+      const enrichedBus = await enrichBusWithStopCoords(bus);
 
       let trip = null;
 
@@ -434,15 +438,15 @@ router.get(
          5️⃣ AUTO CREATE ROUTE IF NOTHING EXISTS
          ================================================= */
       if (!trip) {
-        const totalTime = (bus.segmentTimes || []).reduce(
+        const totalTime = (enrichedBus?.segmentTimes || []).reduce(
           (a, b) => a + b,
           0
         );
 
         trip = await Trip.create({
-          busNo: bus.busNo,
+          busNo: enrichedBus.busNo,
           driverId: driver._id,
-          segmentTimes: bus.segmentTimes || [],
+          segmentTimes: enrichedBus.segmentTimes || [],
           totalTime,
           tripType: "route",
           status: "planned",
@@ -451,7 +455,7 @@ router.get(
 
       res.json({
         trip,
-        bus,
+        bus: enrichedBus,
       });
 
     } catch (error) {
@@ -666,6 +670,7 @@ router.get(
 
       const bus = await Bus.findOne({ busNo });
       if (!bus) return res.status(404).json({ message: "Bus not found" });
+      const enrichedBus = await enrichBusWithStopCoords(bus);
 
       const now = Date.now();
 
@@ -694,7 +699,7 @@ router.get(
 
       const etaList = [];
 
-      for (let i = 0; i < bus.stops.length; i++) {
+      for (let i = 0; i < enrichedBus.stops.length; i++) {
         if (i > 0) {
           cumulativeMs += trip.segmentTimes[i - 1] * 60000;
         }
@@ -715,7 +720,7 @@ router.get(
         );
 
         etaList.push({
-          stop: bus.stops[i],
+          stop: enrichedBus.stops[i],
           eta: etaTime,
           status
         });

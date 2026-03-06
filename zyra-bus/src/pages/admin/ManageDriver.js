@@ -67,7 +67,7 @@ export default function ManageDriver() {
       toast.show({
         type: "success",
         title: "Add Driver",
-        message: "Driver added successfully (Default Password: 123456)",
+        message: "Driver added. Account can be created later by driver.",
       });
 
       setFormData({
@@ -276,6 +276,25 @@ export default function ManageDriver() {
       setBulkDeleteLoading(false);
     }
   };
+
+  const assignedBusNos = new Set(
+    drivers
+      .filter(
+        (d) =>
+          d.assignedBus &&
+          d.driverId !== selectedDriver?.driverId,
+      )
+      .map((d) => d.assignedBus),
+  );
+
+  const assignableBuses = buses.filter(
+    (b) =>
+      b.busType !== "alternative" &&
+      (
+        !assignedBusNos.has(b.busNo) ||
+        b.busNo === selectedDriver?.assignedBus
+      ),
+  );
 
   return (
     <div className="driver-page">
@@ -528,7 +547,7 @@ export default function ManageDriver() {
                 }
               >
                 <option value="">Select Bus</option>
-                {buses.map((b) => (
+                {assignableBuses.map((b) => (
                   <option key={b._id} value={b.busNo}>
                     {b.busNo}
                   </option>

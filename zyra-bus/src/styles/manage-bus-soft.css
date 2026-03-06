@@ -161,16 +161,42 @@
 }
 
 .stop-glass-card {
-  padding: 18px 20px;
+  padding: 5px 10px;
+  padding-bottom: 5px;
   border-radius: 18px;
   background: #ffffff;
   border: 1px solid rgba(0,0,0,0.04);
   box-shadow: 0 8px 20px rgba(0,0,0,0.04);
   transition: 0.2s ease;
+
 }
 
 .stop-glass-card:hover {
   transform: translateY(-2px);
+}
+
+.stop-list-modal-body {
+  background: linear-gradient(180deg, rgba(79, 163, 209, 0.07), rgba(45, 127, 249, 0.04));
+  padding-bottom: 0;
+}
+
+.stop-lookup-grid {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 12px;
+  align-items: flex-start;
+}
+
+.stop-lookup-card {
+  width: auto;
+  flex: 0 0 auto;
+  max-width: 100%;
+  min-height: 52px;
+  display: flex;
+  align-items: center;
+  padding: 12px 16px;
+  margin: 0;
+  white-space: nowrap;
 }
 
 .stop-drag-over {
@@ -268,5 +294,9 @@
 
   .stop-glass-card {
     padding: 15px;
+  }
+
+  .stop-lookup-grid {
+    gap: 10px;
   }
 }

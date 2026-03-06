@@ -31,8 +31,13 @@ export default function TripManagement() {
     busNo: "",
     direction: "outbound",
     totalTime: "",
-    destinationLat: "",
-    destinationLng: "",
+    driverId: "",
+    fromDate: "",
+    toDate: "",
+    startTime: "",
+    endTime: "",
+    destination: "",
+    reason: "",
     eventStops: [],
   });
 
@@ -43,6 +48,9 @@ export default function TripManagement() {
   const [deleteConfirmMessage, setDeleteConfirmMessage] = useState("");
   const [deleteConfirmAction, setDeleteConfirmAction] = useState(null);
   const [deleteConfirmLoading, setDeleteConfirmLoading] = useState(false);
+  const [missingStopModal, setMissingStopModal] = useState(false);
+  const [missingStopRows, setMissingStopRows] = useState([]);
+  const [pendingTripPayload, setPendingTripPayload] = useState(null);
   const [editData, setEditData] = useState({
     busNo: "",
     driverId: "",
@@ -85,7 +93,53 @@ const fetchDrivers = async () => {
 
   /* ================= CREATE TRIP ================= */
 
-const handleCreateTrip = async () => {
+  const createEventTrip = async (payload) => {
+    try {
+      await API.post("/admin/event-trip", payload);
+
+      toast.show({
+        type: "success",
+        title: "Create Trip",
+        message: "Event Trip Created Successfully",
+      });
+
+      setFormData({
+        busNo: "",
+        driverId: "",
+        fromDate: "",
+        toDate: "",
+        startTime: "",
+        endTime: "",
+        destination: "",
+        reason: "",
+        eventStops: [],
+      });
+      setPendingTripPayload(null);
+      setMissingStopRows([]);
+      setMissingStopModal(false);
+      fetchTrips();
+      fetchHistory();
+    } catch (err) {
+      if (err.response?.data?.code === "MISSING_STOPS") {
+        const rows = (err.response?.data?.missingStops || []).map((s) => ({
+          stopName: s.stopName,
+          lat: "",
+          lng: "",
+        }));
+        setMissingStopRows(rows);
+        setPendingTripPayload(payload);
+        setMissingStopModal(true);
+        return;
+      }
+      toast.show({
+        type: "error",
+        title: "Create Trip",
+        message: err.response?.data?.message || "Error creating trip",
+      });
+    }
+  };
+
+  const handleCreateTrip = async () => {
   const {
     busNo,
     driverId,
@@ -95,8 +149,6 @@ const handleCreateTrip = async () => {
     endTime,
     destination,
     reason,
-    destinationLat,
-    destinationLng
   } = formData;
 
   if (
@@ -107,9 +159,7 @@ const handleCreateTrip = async () => {
     !startTime ||
     !endTime ||
     !destination ||
-    !reason ||
-    !destinationLat ||
-    !destinationLng
+    !reason
   ) {
     toast.show({
       type: "warning",
@@ -119,44 +169,29 @@ const handleCreateTrip = async () => {
     return;
   }
 
-  try {
-    await API.post("/admin/event-trip", formData);
+    const payload = {
+      busNo,
+      driverId,
+      fromDate,
+      toDate,
+      startTime,
+      endTime,
+      destination,
+      reason,
+      eventStops: (formData.eventStops || [])
+        .map((s) => ({ stopName: String(s.stopName || "").trim() }))
+        .filter((s) => s.stopName),
+    };
 
-    toast.show({
-      type: "success",
-      title: "Create Trip",
-      message: "Event Trip Created Successfully",
-    });
-
-    setFormData({
-      busNo: "",
-      driverId: "",
-      fromDate: "",
-      toDate: "",
-      startTime: "",
-      endTime: "",
-      destination: "",
-      reason: "",
-      destinationLat: "",
-      destinationLng: "",
-      eventStops: []
-    });
-
-  } catch (err) {
-    toast.show({
-      type: "error",
-      title: "Create Trip",
-      message: err.response?.data?.message || "Error creating trip",
-    });
-  }
-};
+    await createEventTrip(payload);
+  };
 
   const addEventStop = () => {
     setFormData({
       ...formData,
       eventStops: [
         ...formData.eventStops,
-        { stopName: "", lat: "", lng: "" },
+        { stopName: "" },
       ],
     });
   };
@@ -170,6 +205,52 @@ const handleCreateTrip = async () => {
   const removeEventStop = (index) => {
     const updated = formData.eventStops.filter((_, i) => i !== index);
     setFormData({ ...formData, eventStops: updated });
+  };
+
+  const handleSaveMissingStops = async () => {
+    const hasInvalid = missingStopRows.some(
+      (s) =>
+        !s.stopName ||
+        Number.isNaN(Number(s.lat)) ||
+        Number.isNaN(Number(s.lng)),
+    );
+
+    if (hasInvalid) {
+      toast.show({
+        type: "warning",
+        title: "Missing Stops",
+        message: "Provide latitude and longitude for all missing stops",
+      });
+      return;
+    }
+
+    try {
+      await API.post("/admin/stops/bulk-upsert", {
+        stops: missingStopRows.map((s) => ({
+          stopName: s.stopName,
+          lat: Number(s.lat),
+          lng: Number(s.lng),
+        })),
+      });
+
+      toast.show({
+        type: "success",
+        title: "Missing Stops",
+        message: "Missing stops saved",
+      });
+
+      if (pendingTripPayload) {
+        await createEventTrip(pendingTripPayload);
+      } else {
+        setMissingStopModal(false);
+      }
+    } catch (err) {
+      toast.show({
+        type: "error",
+        title: "Missing Stops",
+        message: err.response?.data?.message || "Failed to save missing stops",
+      });
+    }
   };
 
   /* ================= EDIT / DELETE ACTIVE ================= */
@@ -422,32 +503,6 @@ const handleCreateTrip = async () => {
               />
             </Col>
 
-            <Col md={4}>
-              <Form.Label>Destination Lat</Form.Label>
-              <Form.Control
-                className="input-soft"
-                type="number"
-                placeholder="Latitude"
-                value={formData.destinationLat}
-                onChange={(e) =>
-                  setFormData({ ...formData, destinationLat: e.target.value })
-                }
-              />
-            </Col>
-
-            <Col md={4}>
-              <Form.Label>Destination Lng</Form.Label>
-              <Form.Control
-                className="input-soft"
-                type="number"
-                placeholder="Longitude"
-                value={formData.destinationLng}
-                onChange={(e) =>
-                  setFormData({ ...formData, destinationLng: e.target.value })
-                }
-              />
-            </Col>
-
             <Col md={3}>
               <Form.Label>From Date</Form.Label>
               <Form.Control
@@ -522,35 +577,13 @@ const handleCreateTrip = async () => {
             {formData.eventStops.map((stop, index) => (
               <Col md={12} key={index}>
                 <Row className="g-2 align-items-center">
-                  <Col md={5}>
+                  <Col md={11}>
                     <Form.Control
                       className="input-soft"
                       placeholder="Stop Name"
                       value={stop.stopName}
                       onChange={(e) =>
                         updateEventStop(index, "stopName", e.target.value)
-                      }
-                    />
-                  </Col>
-                  <Col md={3}>
-                    <Form.Control
-                      className="input-soft"
-                      type="number"
-                      placeholder="Lat"
-                      value={stop.lat}
-                      onChange={(e) =>
-                        updateEventStop(index, "lat", e.target.value)
-                      }
-                    />
-                  </Col>
-                  <Col md={3}>
-                    <Form.Control
-                      className="input-soft"
-                      type="number"
-                      placeholder="Lng"
-                      value={stop.lng}
-                      onChange={(e) =>
-                        updateEventStop(index, "lng", e.target.value)
                       }
                     />
                   </Col>
@@ -905,6 +938,71 @@ const handleCreateTrip = async () => {
           disabled={deleteConfirmLoading}
         >
           {deleteConfirmLoading ? "Deleting..." : "Delete"}
+        </Button>
+      </Modal.Footer>
+    </Modal>
+
+    <Modal
+      show={missingStopModal}
+      onHide={() => {
+        setMissingStopModal(false);
+        setPendingTripPayload(null);
+      }}
+      centered
+    >
+      <Modal.Header closeButton>
+        <Modal.Title>Add Missing Stops</Modal.Title>
+      </Modal.Header>
+      <Modal.Body>
+        <p className="mb-3">
+          These stops are missing in Stop DB. Add coordinates to continue.
+        </p>
+        <div className="d-flex flex-column gap-3">
+          {missingStopRows.map((row, idx) => (
+            <Row key={`${row.stopName}-${idx}`} className="g-2">
+              <Col md={5}>
+                <Form.Control value={row.stopName} disabled />
+              </Col>
+              <Col md={3}>
+                <Form.Control
+                  type="number"
+                  placeholder="Latitude"
+                  value={row.lat}
+                  onChange={(e) => {
+                    const next = [...missingStopRows];
+                    next[idx].lat = e.target.value;
+                    setMissingStopRows(next);
+                  }}
+                />
+              </Col>
+              <Col md={4}>
+                <Form.Control
+                  type="number"
+                  placeholder="Longitude"
+                  value={row.lng}
+                  onChange={(e) => {
+                    const next = [...missingStopRows];
+                    next[idx].lng = e.target.value;
+                    setMissingStopRows(next);
+                  }}
+                />
+              </Col>
+            </Row>
+          ))}
+        </div>
+      </Modal.Body>
+      <Modal.Footer>
+        <Button
+          variant="secondary"
+          onClick={() => {
+            setMissingStopModal(false);
+            setPendingTripPayload(null);
+          }}
+        >
+          Cancel
+        </Button>
+        <Button className="primary-btn" onClick={handleSaveMissingStops}>
+          Save and Continue
         </Button>
       </Modal.Footer>
     </Modal>

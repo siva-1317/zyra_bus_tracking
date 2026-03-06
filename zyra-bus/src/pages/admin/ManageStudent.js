@@ -58,6 +58,7 @@ export default function ManageStudent() {
 
   const [students, setStudents] = useState([]);
   const [buses, setBuses] = useState([]);
+  const [stopSearchTerm, setStopSearchTerm] = useState("");
 
 
   // 🔹 NEW STUDENT FORM
@@ -176,6 +177,7 @@ export default function ManageStudent() {
   const openStudent = async (rollNumber) => {
     const res = await API.get(`/admin/student/${rollNumber}`);
     setSelectedStudent(res.data);
+    setStopSearchTerm("");
     setShowModal(true);
   };
 
@@ -368,6 +370,23 @@ export default function ManageStudent() {
       setBulkDeleteLoading(false);
     }
   };
+
+  const selectedBusDetails = buses.find(
+    (bus) => bus.busNo === selectedStudent?.assignedBus,
+  );
+
+  const selectedBusStops = Array.from(
+    new Set(
+      (selectedBusDetails?.stops || [])
+        .map((s) => String(s.stopName || "").trim())
+        .filter(Boolean),
+    ),
+  ).sort((a, b) => a.localeCompare(b, undefined, { sensitivity: "base" }));
+
+  const filteredBusStops = selectedBusStops.filter((stopName) =>
+    !stopSearchTerm ||
+    stopName.toLowerCase().includes(stopSearchTerm.trim().toLowerCase()),
+  );
 
 
 
@@ -707,20 +726,6 @@ export default function ManageStudent() {
                 />
               </Form.Group>
               <Form.Group className="mb-2">
-                <Form.Label>Bus Stop</Form.Label>
-                <Form.Control
-                  className="input-soft"
-                  value={selectedStudent.busStop || ""}
-                  onChange={(e) =>
-                    setSelectedStudent({
-                      ...selectedStudent,
-                      busStop: e.target.value,
-                    })
-                  }
-                />
-              </Form.Group>
-
-              <Form.Group className="mb-2">
                 <Form.Label>Assign Bus</Form.Label>
                 <Form.Select
                   className="input-soft"
@@ -729,6 +734,7 @@ export default function ManageStudent() {
                     setSelectedStudent({
                       ...selectedStudent,
                       assignedBus: e.target.value,
+                      busStop: "",
                     })
                   }
                 >
@@ -737,6 +743,39 @@ export default function ManageStudent() {
                   {buses.map((bus) => (
                     <option key={bus._id} value={bus.busNo}>
                       {bus.busNo} - {bus.routeName}
+                    </option>
+                  ))}
+                </Form.Select>
+              </Form.Group>
+
+              <Form.Group className="mb-2">
+                <Form.Label>Bus Stop</Form.Label>
+                <Form.Control
+                  className="input-soft mb-2"
+                  placeholder="Search stop name"
+                  value={stopSearchTerm}
+                  onChange={(e) => setStopSearchTerm(e.target.value)}
+                  disabled={!selectedStudent.assignedBus}
+                />
+                <Form.Select
+                  className="input-soft"
+                  value={selectedStudent.busStop || ""}
+                  onChange={(e) =>
+                    setSelectedStudent({
+                      ...selectedStudent,
+                      busStop: e.target.value,
+                    })
+                  }
+                  disabled={!selectedStudent.assignedBus}
+                >
+                  <option value="">
+                    {!selectedStudent.assignedBus
+                      ? "-- Select Bus First --"
+                      : "-- Select Stop --"}
+                  </option>
+                  {filteredBusStops.map((stopName) => (
+                    <option key={stopName} value={stopName}>
+                      {stopName}
                     </option>
                   ))}
                 </Form.Select>

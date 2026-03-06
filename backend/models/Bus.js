@@ -12,9 +12,7 @@ const stopSchema = new mongoose.Schema({
   eveningTime: {
     type: String,   // Format: "HH:mm"
     required: true
-  },
-  lat: Number,
-  lng: Number
+  }
 }, { _id: false });
 
 const busSchema = new mongoose.Schema({

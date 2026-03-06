@@ -1,7 +1,6 @@
 const express = require("express");
 const router = express.Router();
 const bcrypt = require("bcryptjs");
-const mongoose = require("mongoose");
 const fs = require("fs");
 const multer = require("multer");
 const csv = require("csv-parser");
@@ -15,8 +14,16 @@ const Feedback = require("../models/Feedback");
 const Leave = require("../models/Leave");
 const Announcement = require("../models/Announcement");
 const BusComplaint = require("../models/BusComplaint");
+const Stop = require("../models/Stop");
 const CalendarNote = require("../models/CalendarNote");
 const CalendarDailyHistory = require("../models/CalendarDailyHistory");
+const {
+  normalizeStopName,
+  cleanStopName,
+  prepareBusStopsFromMaster,
+  enrichBusWithStopCoords,
+  enrichBusesWithStopCoords,
+} = require("../utils/stop-utils");
 
 const auth = require("../middleware/auth.middleware");
 const allowRoles = require("../middleware/role.middleware");
@@ -240,7 +247,15 @@ const refreshTripCalendarHistory = async (tripDoc, oldTripDoc = null) => {
 // ADD BUS
 router.post("/bus", auth, allowRoles(["admin"]), async (req, res) => {
   try {
-    const stops = Array.isArray(req.body.stops) ? req.body.stops : [];
+    const requestedStops = Array.isArray(req.body.stops) ? req.body.stops : [];
+    const { stops, missingStops } = await prepareBusStopsFromMaster(requestedStops);
+    if (missingStops.length > 0) {
+      return res.status(400).json({
+        code: "MISSING_STOPS",
+        message: "Add coordinates for missing stops",
+        missingStops,
+      });
+    }
     const requestedType =
       req.body.busType === "regular" ? "regular" : "alternative";
     const busType = stops.length > 0 ? "regular" : requestedType;
@@ -259,16 +274,18 @@ router.post("/bus", auth, allowRoles(["admin"]), async (req, res) => {
 // GET BUSES
 router.get("/bus", auth, allowRoles(["admin"]), async (req, res) => {
   const buses = await Bus.find();
-  res.json(buses);
+  const enriched = await enrichBusesWithStopCoords(buses);
+  res.json(enriched);
 });
 
 // LIVE BUS STATUS + LOCATION (ADMIN)
 router.get("/bus-live", auth, allowRoles(["admin"]), async (req, res) => {
   try {
     const buses = await Bus.find();
+    const busesWithCoords = await enrichBusesWithStopCoords(buses);
 
     const live = await Promise.all(
-      buses.map(async (bus) => {
+      busesWithCoords.map(async (bus) => {
         const activeTrip = await Trip.findOne({
           busNo: bus.busNo,
           status: { $in: ["running", "paused"] },
@@ -326,7 +343,16 @@ router.put("/bus/:busNo", auth, allowRoles(["admin"]), async (req, res) => {
     if (req.body.routeName !== undefined) bus.routeName = req.body.routeName;
 
     if (req.body.stops !== undefined) {
-      bus.stops = Array.isArray(req.body.stops) ? req.body.stops : [];
+      const requestedStops = Array.isArray(req.body.stops) ? req.body.stops : [];
+      const { stops, missingStops } = await prepareBusStopsFromMaster(requestedStops);
+      if (missingStops.length > 0) {
+        return res.status(400).json({
+          code: "MISSING_STOPS",
+          message: "Add coordinates for missing stops",
+          missingStops,
+        });
+      }
+      bus.stops = stops;
     }
     if (req.body.busType !== undefined) {
       bus.busType = req.body.busType;
@@ -355,7 +381,112 @@ router.put("/bus/:busNo", auth, allowRoles(["admin"]), async (req, res) => {
 
     await bus.save();
     await refreshTodayCalendarHistory();
-    res.json(bus);
+    const enriched = await enrichBusWithStopCoords(bus);
+    res.json(enriched);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.get("/stops", auth, allowRoles(["admin"]), async (req, res) => {
+  try {
+    const stops = await Stop.find().sort({ stopName: 1 });
+    res.json(stops);
+  } catch (err) {
+    res.status(500).json({ message: err.message });
+  }
+});
+
+router.post("/stops", auth, allowRoles(["admin"]), async (req, res) => {
+  try {
+    const stopName = cleanStopName(req.body.stopName || "");
+    const lat = Number(req.body.lat);
+    const lng = Number(req.body.lng);
+    if (!stopName || Number.isNaN(lat) || Number.isNaN(lng)) {
+      return res.status(400).json({ message: "stopName, lat and lng are required" });
+    }
+    const normalizedName = normalizeStopName(stopName);
+    const existing = await Stop.findOne({ normalizedName });
+    if (existing) {
+      existing.stopName = stopName;
+      existing.lat = lat;
+      existing.lng = lng;
+      await existing.save();
+      return res.json(existing);
+    }
+    const stop = await Stop.create({ stopName, lat, lng });
+    res.json(stop);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+router.post("/stops/bulk-upsert", auth, allowRoles(["admin"]), async (req, res) => {
+  try {
+    const rows = Array.isArray(req.body?.stops) ? req.body.stops : [];
+    if (!rows.length) {
+      return res.status(400).json({ message: "stops array required" });
+    }
+    const dedup = new Map();
+    rows.forEach((r) => {
+      const stopName = cleanStopName(r?.stopName || "");
+      const normalizedName = normalizeStopName(stopName);
+      const lat = Number(r?.lat);
+      const lng = Number(r?.lng);
+      if (!stopName || Number.isNaN(lat) || Number.isNaN(lng)) return;
+      dedup.set(normalizedName, { stopName, lat, lng });
+    });
+    const upserts = [];
+    for (const value of dedup.values()) {
+      const doc = await Stop.findOneAndUpdate(
+        { normalizedName: normalizeStopName(value.stopName) },
+        { $set: value },
+        { new: true, upsert: true, setDefaultsOnInsert: true },
+      );
+      upserts.push(doc);
+    }
+    res.json(upserts);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+router.put("/stops/:id", auth, allowRoles(["admin"]), async (req, res) => {
+  try {
+    const stop = await Stop.findById(req.params.id);
+    if (!stop) return res.status(404).json({ message: "Stop not found" });
+    const stopName = cleanStopName(req.body.stopName || stop.stopName);
+    const lat = req.body.lat !== undefined ? Number(req.body.lat) : stop.lat;
+    const lng = req.body.lng !== undefined ? Number(req.body.lng) : stop.lng;
+    if (!stopName || Number.isNaN(lat) || Number.isNaN(lng)) {
+      return res.status(400).json({ message: "stopName, lat and lng are required" });
+    }
+    stop.stopName = stopName;
+    stop.lat = lat;
+    stop.lng = lng;
+    await stop.save();
+    res.json(stop);
+  } catch (err) {
+    res.status(400).json({ message: err.message });
+  }
+});
+
+router.delete("/stops/:id", auth, allowRoles(["admin"]), async (req, res) => {
+  try {
+    const stop = await Stop.findById(req.params.id);
+    if (!stop) return res.status(404).json({ message: "Stop not found" });
+    const normalized = stop.normalizedName;
+    const buses = await Bus.find({}, { busNo: 1, stops: 1 }).lean();
+    const usedBy = buses.find((b) =>
+      (b.stops || []).some((s) => normalizeStopName(s.stopName) === normalized),
+    );
+    if (usedBy) {
+      return res.status(400).json({
+        message: `Stop is used in bus ${usedBy.busNo}. Update bus route first.`,
+      });
+    }
+    await Stop.deleteOne({ _id: stop._id });
+    res.json({ message: "Stop deleted successfully" });
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -561,6 +692,14 @@ router.put("/swap-bus", auth, allowRoles(["admin"]), async (req, res) => {
     const assignedToNewBus = await Student.countDocuments({ assignedBus: toBusNo });
     toBus.availableSeats = Math.max((toBus.totalSeats || 0) - assignedToNewBus, 0);
     await toBus.save();
+
+    await Announcement.create({
+      title: "Bus Assignment Updated",
+      message: `Your assigned bus has been swapped from ${fromBusNo} to ${toBusNo}.`,
+      audience: "all",
+      busNo: toBusNo,
+    });
+
     await refreshTodayCalendarHistory();
 
     res.json({
@@ -580,28 +719,28 @@ router.put("/swap-bus", auth, allowRoles(["admin"]), async (req, res) => {
 router.post("/driver", auth, allowRoles(["admin"]), async (req, res) => {
   try {
     const { driverId, name, phone, licenseNo } = req.body;
+    const normalizedDriverId = String(driverId || "").trim();
 
-    const existing = await Driver.findOne({ driverId });
+    if (!normalizedDriverId) {
+      return res.status(400).json({ message: "Driver ID required" });
+    }
+
+    const existing = await Driver.findOne({ driverId: normalizedDriverId });
     if (existing)
       return res.status(400).json({ message: "Driver already exists" });
 
-    const hashedPassword = await bcrypt.hash("123456", 10);
-
-    const user = await User.create({
-      username: driverId,
-      password: hashedPassword,
-      role: "driver",
-    });
-
     const driver = await Driver.create({
-      userId: user._id,
-      driverId,
+      driverId: normalizedDriverId,
       name,
       phone,
       licenseNo,
     });
 
-    res.json({ message: "Driver created successfully", driver });
+    res.json({
+      message:
+        "Driver created successfully. Driver can now create account with driver ID.",
+      driver,
+    });
   } catch (err) {
     res.status(400).json({ message: err.message });
   }
@@ -625,6 +764,10 @@ router.put(
 
       const driver = await Driver.findOne({ driverId: req.params.driverId }).select("userId driverId");
       if (!driver) return res.status(404).json({ message: "Driver not found" });
+
+      if (!driver.userId) {
+        return res.status(400).json({ message: "Driver account not created yet" });
+      }
 
       const user = await User.findById(driver.userId);
       if (!user) return res.status(404).json({ message: "Driver login user not found" });
@@ -720,7 +863,9 @@ router.delete(
       if (!driver) return res.status(404).json({ message: "Driver not found" });
 
       await Bus.updateMany({ driverId: driver.driverId }, { driverId: null });
-      await User.findByIdAndDelete(driver.userId);
+      if (driver.userId) {
+        await User.findByIdAndDelete(driver.userId);
+      }
       await Driver.deleteOne({ driverId: driver.driverId });
       await refreshTodayCalendarHistory();
 
@@ -764,8 +909,6 @@ router.post("/student", auth, allowRoles(["admin"]), async (req, res) => {
       department,
       year: parsedYear,
       phone,
-      // Works even if an old non-sparse unique index on userId still exists.
-      userId: new mongoose.Types.ObjectId(),
       accountCreated: false,
     });
     await refreshTodayCalendarHistory();
@@ -999,7 +1142,6 @@ router.post(
               department,
               year: yearRaw ? Number(yearRaw) : undefined,
               phone,
-              userId: new mongoose.Types.ObjectId(),
               accountCreated: false,
             });
 
@@ -1364,8 +1506,63 @@ router.delete("/calendar-daily-history", auth, allowRoles(["admin"]), async (req
 
 router.post("/event-trip", auth, allowRoles(["admin"]), async (req, res) => {
   try {
+    const destinationInput = cleanStopName(req.body.destination || "");
+    const eventStopsInput = Array.isArray(req.body.eventStops) ? req.body.eventStops : [];
+    const cleanedEventStopNames = eventStopsInput
+      .map((s) => cleanStopName(s?.stopName || ""))
+      .filter(Boolean);
+
+    const normalizedOrder = [];
+    const firstNameByNormalized = {};
+
+    const collectStop = (name) => {
+      const normalized = normalizeStopName(name);
+      if (!normalized) return;
+      if (!firstNameByNormalized[normalized]) {
+        firstNameByNormalized[normalized] = name;
+        normalizedOrder.push(normalized);
+      }
+    };
+
+    if (destinationInput) collectStop(destinationInput);
+    cleanedEventStopNames.forEach(collectStop);
+
+    const stopDocs = normalizedOrder.length
+      ? await Stop.find({ normalizedName: { $in: normalizedOrder } }).lean()
+      : [];
+    const stopByNormalized = stopDocs.reduce((acc, doc) => {
+      acc[doc.normalizedName] = doc;
+      return acc;
+    }, {});
+
+    const missingStops = normalizedOrder
+      .filter((n) => !stopByNormalized[n])
+      .map((n) => ({ stopName: firstNameByNormalized[n] }));
+
+    if (missingStops.length > 0) {
+      return res.status(400).json({
+        code: "MISSING_STOPS",
+        message: "Add coordinates for missing stops",
+        missingStops,
+      });
+    }
+
+    const destinationMaster = stopByNormalized[normalizeStopName(destinationInput)];
+    const normalizedEventStops = cleanedEventStopNames.map((name) => {
+      const master = stopByNormalized[normalizeStopName(name)];
+      return {
+        stopName: master.stopName,
+        lat: master.lat,
+        lng: master.lng,
+      };
+    });
+
     const trip = await Trip.create({
       ...req.body,
+      destination: destinationMaster?.stopName || destinationInput,
+      destinationLat: destinationMaster?.lat ?? null,
+      destinationLng: destinationMaster?.lng ?? null,
+      eventStops: normalizedEventStops,
       tripType: "event",
       status: "planned",
     });

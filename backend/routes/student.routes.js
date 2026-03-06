@@ -11,6 +11,7 @@ const Announcement = require("../models/Announcement");
 const auth = require("../middleware/auth.middleware");
 const allowRoles = require("../middleware/role.middleware");
 const Driver = require("../models/Driver");
+const { enrichBusWithStopCoords, enrichBusesWithStopCoords } = require("../utils/stop-utils");
 
 // TEST ROUTE (IMPORTANT)
 router.get("/test", (req, res) => {
@@ -35,6 +36,7 @@ router.get("/profile", auth, allowRoles(["student"]), async (req, res) => {
     if (student.assignedBus) {
       driver = await Driver.findOne({ assignedBus: student.assignedBus });
       bus = await Bus.findOne({ busNo: student.assignedBus });
+      bus = await enrichBusWithStopCoords(bus);
 
       if (bus) {
         // 🔥 Find matching stop
@@ -80,8 +82,8 @@ router.get("/routes", auth, allowRoles(["student"]), async (req, res) => {
       }, // only regular buses with seats
       "busNo routeName stops availableSeats"
     );
-
-    res.json(buses);
+    const enriched = await enrichBusesWithStopCoords(buses);
+    res.json(enriched);
   } catch (err) {
     res.status(500).json({ message: err.message });
   }
@@ -162,8 +164,8 @@ router.get("/bus", auth, allowRoles(["student"]), async (req, res) => {
   }
 
   const bus = await Bus.findOne({ busNo: student.assignedBus });
-
-  res.json(bus);
+  const enriched = await enrichBusWithStopCoords(bus);
+  res.json(enriched);
 });
 
 router.get("/trip/:busNo", auth, allowRoles(["student"]), async (req, res) => {
@@ -215,6 +217,7 @@ router.get(
       if (!bus) {
         return res.status(404).json({ message: "Bus not found" });
       }
+      const enrichedBus = await enrichBusWithStopCoords(bus);
 
       const now = Date.now();
 
@@ -244,7 +247,7 @@ router.get(
         );
 
         etaList.push({
-          stop: bus.stops[i],
+          stop: enrichedBus.stops[i],
           eta: etaTime,
           status,
         });

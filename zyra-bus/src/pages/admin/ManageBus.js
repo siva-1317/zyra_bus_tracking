@@ -11,8 +11,16 @@ import {
   Accordion,
   Tabs,
   Tab,
+  Pagination,
 } from "react-bootstrap";
-import { MapContainer, TileLayer, Marker, Popup, Polyline, Tooltip } from "react-leaflet";
+import {
+  MapContainer,
+  TileLayer,
+  Marker,
+  Popup,
+  Polyline,
+  Tooltip,
+} from "react-leaflet";
 import L from "leaflet";
 import API from "../../api";
 import { toast } from "../../utils/toast";
@@ -56,6 +64,20 @@ export default function ManageBus() {
   const [alternativeBuses, setAlternativeBuses] = useState([]);
   const [swapLoading, setSwapLoading] = useState(false);
   const [bulkStopsText, setBulkStopsText] = useState("");
+  const [showTimingInputs, setShowTimingInputs] = useState(false);
+  const [masterStops, setMasterStops] = useState([]);
+  const [stopForm, setStopForm] = useState({ stopName: "", lat: "", lng: "" });
+  const [stopBulkText, setStopBulkText] = useState("");
+  const [stopBulkLoading, setStopBulkLoading] = useState(false);
+  const [stopBulkModal, setStopBulkModal] = useState(false);
+  const [stopListModal, setStopListModal] = useState(false);
+  const [stopSearch, setStopSearch] = useState("");
+  const [stopPage, setStopPage] = useState(1);
+  const [stopDetailModal, setStopDetailModal] = useState(false);
+  const [stopDetail, setStopDetail] = useState(null);
+  const [missingStopModal, setMissingStopModal] = useState(false);
+  const [missingStopRows, setMissingStopRows] = useState([]);
+  const [pendingBusAction, setPendingBusAction] = useState(null);
   const [draggedStopIndex, setDraggedStopIndex] = useState(null);
   const [dragOverStopIndex, setDragOverStopIndex] = useState(null);
   const [busListTab, setBusListTab] = useState("active");
@@ -75,6 +97,11 @@ export default function ManageBus() {
     setComplaints(res.data || []);
   };
 
+  const fetchStops = async () => {
+    const res = await API.get("/admin/stops");
+    setMasterStops(res.data || []);
+  };
+
   const fetchAlternativeBuses = async (fromBus) => {
     if (!fromBus) {
       setAlternativeBuses([]);
@@ -90,6 +117,7 @@ export default function ManageBus() {
     fetchBuses();
     fetchLiveBuses();
     fetchComplaints();
+    fetchStops();
 
     const interval = setInterval(() => {
       fetchLiveBuses();
@@ -98,6 +126,60 @@ export default function ManageBus() {
 
     return () => clearInterval(interval);
   }, []);
+
+  const openMissingStopsPopup = (missingStops, action) => {
+    const rows = (missingStops || []).map((s) => ({
+      stopName: s.stopName,
+      lat: "",
+      lng: "",
+    }));
+    setMissingStopRows(rows);
+    setPendingBusAction(action);
+    setMissingStopModal(true);
+  };
+
+  const saveBusRequest = async (action) => {
+    try {
+      if (action.type === "create") {
+        await API.post("/admin/bus", action.payload);
+        toast.show({
+          type: "success",
+          title: "Add Bus",
+          message: "Bus added successfully",
+        });
+        setFormData({
+          busNo: "",
+          routeName: "",
+          totalSeats: "",
+          busType: "alternative",
+          tripStartMorning: "",
+          tripEndMorning: "",
+          tripStartEvening: "",
+          tripEndEvening: "",
+          stops: [],
+        });
+      } else {
+        await API.put(`/admin/bus/${action.busNo}`, action.payload);
+        toast.show({
+          type: "success",
+          title: "Update Bus",
+          message: `Bus ${action.busNo} updated successfully`,
+        });
+        setManageModal(false);
+      }
+      fetchBuses();
+    } catch (err) {
+      if (err.response?.data?.code === "MISSING_STOPS") {
+        openMissingStopsPopup(err.response?.data?.missingStops, action);
+        return;
+      }
+      toast.show({
+        type: "error",
+        title: action.type === "create" ? "Add Bus" : "Update Bus",
+        message: err.response?.data?.message || "Bus save failed",
+      });
+    }
+  };
 
   useEffect(() => {
     fetchAlternativeBuses(fromBusNo);
@@ -115,32 +197,7 @@ export default function ManageBus() {
   }, []);
 
   const handleAddBus = async () => {
-    try {
-      await API.post("/admin/bus", formData);
-      toast.show({
-        type: "success",
-        title: "Add Bus",
-        message: "Bus added successfully",
-      });
-      setFormData({
-        busNo: "",
-        routeName: "",
-        totalSeats: "",
-        busType: "alternative",
-        tripStartMorning: "",
-        tripEndMorning: "",
-        tripStartEvening: "",
-        tripEndEvening: "",
-        stops: [],
-      });
-      fetchBuses();
-    } catch (err) {
-      toast.show({
-        type: "error",
-        title: "Add Bus",
-        message: err.response?.data?.message || "Error adding bus",
-      });
-    }
+    await saveBusRequest({ type: "create", payload: formData });
   };
 
   const filteredBuses = buses.filter((bus) => {
@@ -167,24 +224,28 @@ export default function ManageBus() {
   });
 
   const resolveBusType = (bus) => {
-    if (bus.busType === "regular" || bus.busType === "alternative") return bus.busType;
+    if (bus.busType === "regular" || bus.busType === "alternative")
+      return bus.busType;
     return (bus.stops || []).length > 0 ? "regular" : "alternative";
   };
 
   const maintenanceBuses = filteredBuses.filter(
     (bus) =>
-      bus.conditionStatus === "need-repair" || bus.conditionStatus === "maintenance",
+      bus.conditionStatus === "need-repair" ||
+      bus.conditionStatus === "maintenance",
   );
 
   const alternativeListBuses = filteredBuses.filter((bus) => {
     const isMaintenance =
-      bus.conditionStatus === "need-repair" || bus.conditionStatus === "maintenance";
+      bus.conditionStatus === "need-repair" ||
+      bus.conditionStatus === "maintenance";
     return !isMaintenance && resolveBusType(bus) === "alternative";
   });
 
   const activeBuses = filteredBuses.filter((bus) => {
     const isMaintenance =
-      bus.conditionStatus === "need-repair" || bus.conditionStatus === "maintenance";
+      bus.conditionStatus === "need-repair" ||
+      bus.conditionStatus === "maintenance";
     return !isMaintenance && resolveBusType(bus) === "regular";
   });
 
@@ -204,7 +265,9 @@ export default function ManageBus() {
         <td>{bus.busNo}</td>
         <td>{bus.routeName}</td>
         <td>
-          <Badge bg={resolveBusType(bus) === "regular" ? "primary" : "secondary"}>
+          <Badge
+            bg={resolveBusType(bus) === "regular" ? "primary" : "secondary"}
+          >
             {resolveBusType(bus) === "regular" ? "Regular" : "Alternative"}
           </Badge>
         </td>
@@ -238,8 +301,6 @@ export default function ManageBus() {
   const openManage = (bus) => {
     const normalizedStops = (bus.stops || []).map((stop) => ({
       stopName: stop.stopName || "",
-      lat: stop.lat ?? "",
-      lng: stop.lng ?? "",
       morningTime: stop.morningTime || "",
       eveningTime: stop.eveningTime || "",
     }));
@@ -262,36 +323,25 @@ export default function ManageBus() {
     setManageModal(true);
   };
 
-const handleUpdate = async () => {
-  const updatedData = {
-    routeName: selectedBus.routeName,
-    totalSeats: Number(selectedBus.totalSeats),
-    busType: selectedBus.busType || "alternative",
-    tripStartMorning: selectedBus.tripStartMorning || "",
-    tripEndMorning: selectedBus.tripEndMorning || "",
-    tripStartEvening: selectedBus.tripStartEvening || "",
-    tripEndEvening: selectedBus.tripEndEvening || "",
-    stops: selectedBus.stops,
-    conditionStatus: selectedBus.conditionStatus || "good",
-  };
+  const handleUpdate = async () => {
+    const updatedData = {
+      routeName: selectedBus.routeName,
+      totalSeats: Number(selectedBus.totalSeats),
+      busType: selectedBus.busType || "alternative",
+      tripStartMorning: selectedBus.tripStartMorning || "",
+      tripEndMorning: selectedBus.tripEndMorning || "",
+      tripStartEvening: selectedBus.tripStartEvening || "",
+      tripEndEvening: selectedBus.tripEndEvening || "",
+      stops: selectedBus.stops,
+      conditionStatus: selectedBus.conditionStatus || "good",
+    };
 
-  try {
-    await API.put(`/admin/bus/${selectedBus.busNo}`, updatedData);
-    toast.show({
-      type: "success",
-      title: "Update Bus",
-      message: `Bus ${selectedBus.busNo} updated successfully`,
+    await saveBusRequest({
+      type: "update",
+      busNo: selectedBus.busNo,
+      payload: updatedData,
     });
-    fetchBuses();
-    setManageModal(false);
-  } catch (err) {
-    toast.show({
-      type: "error",
-      title: "Update Bus",
-      message: err.response?.data?.message || "Failed to update bus",
-    });
-  }
-};
+  };
 
   const handleDelete = async () => {
     if (!selectedBus?.busNo) return;
@@ -371,12 +421,284 @@ const handleUpdate = async () => {
     }
   };
 
+  const handleSaveStop = async () => {
+    const payload = {
+      stopName: stopForm.stopName,
+      lat: Number(stopForm.lat),
+      lng: Number(stopForm.lng),
+    };
+    if (
+      !payload.stopName ||
+      Number.isNaN(payload.lat) ||
+      Number.isNaN(payload.lng)
+    ) {
+      toast.show({
+        type: "warning",
+        title: "Manage Stops",
+        message: "Stop name, latitude and longitude are required",
+      });
+      return;
+    }
+
+    try {
+      await API.post("/admin/stops", payload);
+      toast.show({
+        type: "success",
+        title: "Manage Stops",
+        message: "Stop added successfully",
+      });
+      setStopForm({ stopName: "", lat: "", lng: "" });
+      fetchStops();
+      fetchBuses();
+    } catch (err) {
+      toast.show({
+        type: "error",
+        title: "Manage Stops",
+        message: err.response?.data?.message || "Failed to save stop",
+      });
+    }
+  };
+
+  const handleBulkStopAdd = async () => {
+    const lines = stopBulkText
+      .split(/\r?\n/)
+      .map((line) => line.trim())
+      .filter(Boolean);
+
+    if (!lines.length) {
+      toast.show({
+        type: "warning",
+        title: "Manage Stops",
+        message: "Enter at least one CSV row",
+      });
+      return false;
+    }
+
+    const parsed = [];
+    const invalid = [];
+
+    lines.forEach((line, idx) => {
+      const parts = line.split(",").map((p) => p.trim());
+      if (parts.length < 3) {
+        invalid.push(idx + 1);
+        return;
+      }
+      const [stopName, latRaw, lngRaw] = parts;
+      const lat = Number(latRaw);
+      const lng = Number(lngRaw);
+      if (!stopName || Number.isNaN(lat) || Number.isNaN(lng)) {
+        invalid.push(idx + 1);
+        return;
+      }
+      parsed.push({ stopName, lat, lng });
+    });
+
+    if (!parsed.length) {
+      toast.show({
+        type: "error",
+        title: "Manage Stops",
+        message: "No valid CSV rows found. Use: stop,lat,lng",
+      });
+      return false;
+    }
+
+    try {
+      setStopBulkLoading(true);
+      await API.post("/admin/stops/bulk-upsert", { stops: parsed });
+      toast.show({
+        type: "success",
+        title: "Manage Stops",
+        message: `Bulk added/updated ${parsed.length} stop(s)`,
+      });
+      if (invalid.length > 0) {
+        toast.show({
+          type: "warning",
+          title: "Manage Stops",
+          message: `Skipped invalid lines: ${invalid.join(", ")}`,
+        });
+      }
+      setStopBulkText("");
+      fetchStops();
+      fetchBuses();
+      return true;
+    } catch (err) {
+      toast.show({
+        type: "error",
+        title: "Manage Stops",
+        message: err.response?.data?.message || "Bulk stop upload failed",
+      });
+      return false;
+    } finally {
+      setStopBulkLoading(false);
+    }
+  };
+
+  const openStopDetail = (stop) => {
+    setStopDetail({
+      _id: stop._id,
+      stopName: stop.stopName || "",
+      lat: stop.lat ?? "",
+      lng: stop.lng ?? "",
+    });
+    setStopDetailModal(true);
+  };
+
+  const handleDeleteStop = async (stop) => {
+    const ok = window.confirm(`Delete stop ${stop.stopName}?`);
+    if (!ok) return;
+    try {
+      await API.delete(`/admin/stops/${stop._id}`);
+      toast.show({
+        type: "success",
+        title: "Manage Stops",
+        message: "Stop deleted successfully",
+      });
+      setStopDetailModal(false);
+      setStopDetail(null);
+      fetchStops();
+      fetchBuses();
+    } catch (err) {
+      toast.show({
+        type: "error",
+        title: "Manage Stops",
+        message: err.response?.data?.message || "Failed to delete stop",
+      });
+    }
+  };
+
+  const handleUpdateStopDetail = async () => {
+    if (!stopDetail?._id) return;
+    const payload = {
+      stopName: stopDetail.stopName,
+      lat: Number(stopDetail.lat),
+      lng: Number(stopDetail.lng),
+    };
+    if (!payload.stopName || Number.isNaN(payload.lat) || Number.isNaN(payload.lng)) {
+      toast.show({
+        type: "warning",
+        title: "Manage Stops",
+        message: "Stop name, latitude and longitude are required",
+      });
+      return;
+    }
+    try {
+      await API.put(`/admin/stops/${stopDetail._id}`, payload);
+      toast.show({
+        type: "success",
+        title: "Manage Stops",
+        message: "Stop updated successfully",
+      });
+      setStopDetailModal(false);
+      setStopDetail(null);
+      fetchStops();
+      fetchBuses();
+    } catch (err) {
+      toast.show({
+        type: "error",
+        title: "Manage Stops",
+        message: err.response?.data?.message || "Failed to update stop",
+      });
+    }
+  };
+
+  const openStopListModal = async () => {
+    await fetchStops();
+    setStopPage(1);
+    setStopListModal(true);
+  };
+
+  const handleSaveMissingStops = async () => {
+    const hasInvalid = missingStopRows.some(
+      (s) =>
+        !s.stopName ||
+        Number.isNaN(Number(s.lat)) ||
+        Number.isNaN(Number(s.lng)),
+    );
+    if (hasInvalid) {
+      toast.show({
+        type: "warning",
+        title: "Missing Stops",
+        message: "Provide latitude and longitude for all missing stops",
+      });
+      return;
+    }
+
+    try {
+      await API.post("/admin/stops/bulk-upsert", {
+        stops: missingStopRows.map((s) => ({
+          stopName: s.stopName,
+          lat: Number(s.lat),
+          lng: Number(s.lng),
+        })),
+      });
+      toast.show({
+        type: "success",
+        title: "Missing Stops",
+        message: "Missing stops saved",
+      });
+      fetchStops();
+      setMissingStopModal(false);
+      const action = pendingBusAction;
+      setPendingBusAction(null);
+      setMissingStopRows([]);
+      if (action) {
+        await saveBusRequest(action);
+      }
+    } catch (err) {
+      toast.show({
+        type: "error",
+        title: "Missing Stops",
+        message: err.response?.data?.message || "Failed to save missing stops",
+      });
+    }
+  };
+
+  const filteredSortedStops = (masterStops || [])
+    .filter((stop) => {
+      const name = String(stop.stopName || "");
+      const matchSearch =
+        !stopSearch ||
+        name.toLowerCase().includes(stopSearch.trim().toLowerCase());
+      const startsWithAlphabet = /^[A-Za-z]/.test(name.trim());
+      return matchSearch && startsWithAlphabet;
+    })
+    .sort((a, b) =>
+      String(a.stopName || "").localeCompare(String(b.stopName || ""), undefined, {
+        sensitivity: "base",
+      }),
+    );
+
+  const STOPS_PER_PAGE = 10;
+  const totalStopPages = Math.max(
+    1,
+    Math.ceil(filteredSortedStops.length / STOPS_PER_PAGE),
+  );
+  const paginatedStops = filteredSortedStops.slice(
+    (stopPage - 1) * STOPS_PER_PAGE,
+    stopPage * STOPS_PER_PAGE,
+  );
+  const groupedStops = paginatedStops.reduce((acc, stop) => {
+    const name = String(stop.stopName || "").trim();
+    const first = name.charAt(0).toUpperCase();
+    if (!/^[A-Z]$/.test(first)) return acc;
+    if (!acc[first]) acc[first] = [];
+    acc[first].push(stop);
+    return acc;
+  }, {});
+  const groupedLetters = Object.keys(groupedStops).sort();
+
+  useEffect(() => {
+    if (stopPage > totalStopPages) {
+      setStopPage(totalStopPages);
+    }
+  }, [stopPage, totalStopPages]);
+
   const addStop = () => {
     setSelectedBus({
       ...selectedBus,
       stops: [
         ...selectedBus.stops,
-        { stopName: "", lat: "", lng: "", morningTime: "", eveningTime: "" },
+        { stopName: "", morningTime: "", eveningTime: "" },
       ],
     });
   };
@@ -432,11 +754,11 @@ const handleUpdate = async () => {
 
     lines.forEach((line, idx) => {
       const parts = line.split(",").map((p) => p.trim());
-      if (parts.length < 3) {
+      if (parts.length < 1) {
         invalidLines.push(idx + 1);
         return;
       }
-      const [stopName, lat, lng, morningTimeRaw, eveningTimeRaw] = parts;
+      const [stopName, morningTimeRaw, eveningTimeRaw] = parts;
       if (!stopName) {
         invalidLines.push(idx + 1);
         return;
@@ -445,8 +767,6 @@ const handleUpdate = async () => {
       const eveningTime = eveningTimeRaw || "00:00";
       parsedStops.push({
         stopName,
-        lat,
-        lng,
         morningTime,
         eveningTime,
       });
@@ -456,7 +776,7 @@ const handleUpdate = async () => {
       toast.show({
         type: "warning",
         title: "Add Stops",
-        message: "No valid stop rows found. Use: stopName,lat,lng[,morningTime,eveningTime]",
+        message: "No valid rows found. Use: stopName[,morningTime,eveningTime]",
       });
       return;
     }
@@ -483,8 +803,7 @@ const handleUpdate = async () => {
   };
 
   const filteredLiveBuses = liveBuses.filter((bus) => {
-    const matchBus =
-      filterLiveBusNo === "" || bus.busNo === filterLiveBusNo;
+    const matchBus = filterLiveBusNo === "" || bus.busNo === filterLiveBusNo;
     const matchStatus =
       filterLiveStatus === "all" || bus.status === filterLiveStatus;
     return matchBus && matchStatus;
@@ -509,8 +828,7 @@ const handleUpdate = async () => {
   ];
 
   const filteredPathBuses = buses.filter((bus) => {
-    const matchBus =
-      filterLiveBusNo === "" || bus.busNo === filterLiveBusNo;
+    const matchBus = filterLiveBusNo === "" || bus.busNo === filterLiveBusNo;
     const status = statusByBus[bus.busNo] || "not-running";
     const matchStatus =
       filterLiveStatus === "all" || status === filterLiveStatus;
@@ -526,9 +844,7 @@ const handleUpdate = async () => {
     const loadRoutes = async () => {
       const busesToLoad = filteredPathBuses.filter((bus) => {
         if (routeCoordsByBus[bus.busNo]) return false;
-        const stopsWithCoords = (bus.stops || []).filter(
-          (s) => s.lat && s.lng,
-        );
+        const stopsWithCoords = (bus.stops || []).filter((s) => s.lat && s.lng);
         return stopsWithCoords.length >= 2;
       });
 
@@ -567,22 +883,19 @@ const handleUpdate = async () => {
     };
 
     loadRoutes();
-  }, [
-    filteredPathBuses.map((b) => b.busNo).join("|"),
-    routeCoordsByBus,
-  ]);
+  }, [filteredPathBuses.map((b) => b.busNo).join("|"), routeCoordsByBus]);
 
   const mapCenter = (() => {
     const withLocation = filteredLiveBuses.find(
       (b) => b.location && b.location.lat && b.location.lng,
     );
-    if (withLocation) return [withLocation.location.lat, withLocation.location.lng];
+    if (withLocation)
+      return [withLocation.location.lat, withLocation.location.lng];
     return [11.4983, 77.2426]; // Bannari Amman Institute of Technology
   })();
 
   return (
     <div className="manage-bus-container">
-
       <h3 className="page-title">Bus Management</h3>
 
       {/* ADD BUS */}
@@ -600,7 +913,7 @@ const handleUpdate = async () => {
             />
           </Col>
 
-          <Col xs={12} md={5}>
+          <Col xs={12} md={4}>
             <Form.Control
               placeholder="Route Name"
               value={formData.routeName}
@@ -610,59 +923,13 @@ const handleUpdate = async () => {
             />
           </Col>
 
-          <Col xs={12} md={3}>
+          <Col xs={12} md={2}>
             <Form.Control
               type="number"
               placeholder="Total Seats"
               value={formData.totalSeats}
               onChange={(e) =>
                 setFormData({ ...formData, totalSeats: e.target.value })
-              }
-            />
-          </Col>
-        </Row>
-
-        <Row className="g-3 mt-1">
-          <Col xs={12} md={3}>
-            <Form.Label className="form-label-soft">Morning Start (HH:mm)</Form.Label>
-            <Form.Control
-              type="time"
-              value={formData.tripStartMorning}
-              onChange={(e) =>
-                setFormData({ ...formData, tripStartMorning: e.target.value })
-              }
-            />
-          </Col>
-
-          <Col xs={12} md={3}>
-            <Form.Label className="form-label-soft">Morning End (HH:mm)</Form.Label>
-            <Form.Control
-              type="time"
-              value={formData.tripEndMorning}
-              onChange={(e) =>
-                setFormData({ ...formData, tripEndMorning: e.target.value })
-              }
-            />
-          </Col>
-
-          <Col xs={12} md={3}>
-            <Form.Label className="form-label-soft">Evening Start (HH:mm)</Form.Label>
-            <Form.Control
-              type="time"
-              value={formData.tripStartEvening}
-              onChange={(e) =>
-                setFormData({ ...formData, tripStartEvening: e.target.value })
-              }
-            />
-          </Col>
-
-          <Col xs={12} md={3}>
-            <Form.Label className="form-label-soft">Evening End (HH:mm)</Form.Label>
-            <Form.Control
-              type="time"
-              value={formData.tripEndEvening}
-              onChange={(e) =>
-                setFormData({ ...formData, tripEndEvening: e.target.value })
               }
             />
           </Col>
@@ -678,7 +945,72 @@ const handleUpdate = async () => {
               <option value="regular">Regular</option>
             </Form.Select>
           </Col>
+
+          <Col xs={12} md={2} className="d-flex">
+            <Button
+              className="primary-btn w-100"
+              onClick={() => setShowTimingInputs((prev) => !prev)}
+            >
+              {showTimingInputs ? "Hide Timing" : "Add Timing"}
+            </Button>
+          </Col>
         </Row>
+
+        {showTimingInputs && (
+          <Row className="g-3 mt-1">
+            <Col xs={12} md={3}>
+              <Form.Label className="form-label-soft">
+                Morning Start (HH:mm)
+              </Form.Label>
+              <Form.Control
+                type="time"
+                value={formData.tripStartMorning}
+                onChange={(e) =>
+                  setFormData({ ...formData, tripStartMorning: e.target.value })
+                }
+              />
+            </Col>
+
+            <Col xs={12} md={3}>
+              <Form.Label className="form-label-soft">
+                Morning End (HH:mm)
+              </Form.Label>
+              <Form.Control
+                type="time"
+                value={formData.tripEndMorning}
+                onChange={(e) =>
+                  setFormData({ ...formData, tripEndMorning: e.target.value })
+                }
+              />
+            </Col>
+
+            <Col xs={12} md={3}>
+              <Form.Label className="form-label-soft">
+                Evening Start (HH:mm)
+              </Form.Label>
+              <Form.Control
+                type="time"
+                value={formData.tripStartEvening}
+                onChange={(e) =>
+                  setFormData({ ...formData, tripStartEvening: e.target.value })
+                }
+              />
+            </Col>
+
+            <Col xs={12} md={3}>
+              <Form.Label className="form-label-soft">
+                Evening End (HH:mm)
+              </Form.Label>
+              <Form.Control
+                type="time"
+                value={formData.tripEndEvening}
+                onChange={(e) =>
+                  setFormData({ ...formData, tripEndEvening: e.target.value })
+                }
+              />
+            </Col>
+          </Row>
+        )}
 
         <Button className="primary-btn mt-4 w-100" onClick={handleAddBus}>
           Add Bus
@@ -731,7 +1063,6 @@ const handleUpdate = async () => {
             </Button>
           </Col>
         </Row>
-
       </Card>
 
       {/* FILTER */}
@@ -746,7 +1077,10 @@ const handleUpdate = async () => {
           </Col>
 
           <Col xs={12} md={3}>
-            <Form.Select value={filterDriver} onChange={(e) => setFilterDriver(e.target.value)}>
+            <Form.Select
+              value={filterDriver}
+              onChange={(e) => setFilterDriver(e.target.value)}
+            >
               <option value="">All Drivers</option>
               <option value="assigned">Assigned</option>
               <option value="unassigned">Unassigned</option>
@@ -754,7 +1088,10 @@ const handleUpdate = async () => {
           </Col>
 
           <Col xs={12} md={3}>
-            <Form.Select value={filterCapacity} onChange={(e) => setFilterCapacity(e.target.value)}>
+            <Form.Select
+              value={filterCapacity}
+              onChange={(e) => setFilterCapacity(e.target.value)}
+            >
               <option value="">All Capacity</option>
               <option value="full">Full</option>
               <option value="available">Seats Available</option>
@@ -762,7 +1099,10 @@ const handleUpdate = async () => {
           </Col>
 
           <Col xs={12} md={3}>
-            <Form.Select value={filterTripStatus} onChange={(e) => setFilterTripStatus(e.target.value)}>
+            <Form.Select
+              value={filterTripStatus}
+              onChange={(e) => setFilterTripStatus(e.target.value)}
+            >
               <option value="">All Status</option>
               <option value="not-started">Not Started</option>
               <option value="running">Running</option>
@@ -774,7 +1114,7 @@ const handleUpdate = async () => {
       </Card>
 
       {/* BUS LIST TABS */}
-      <Card className="glass-card">
+      <Card className="glass-card mb-4">
         <Tabs
           activeKey={busListTab}
           onSelect={(k) => setBusListTab(k || "active")}
@@ -820,7 +1160,10 @@ const handleUpdate = async () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {renderBusRows(alternativeListBuses, "No alternative buses found")}
+                  {renderBusRows(
+                    alternativeListBuses,
+                    "No alternative buses found",
+                  )}
                 </tbody>
               </Table>
             </div>
@@ -844,12 +1187,68 @@ const handleUpdate = async () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {renderBusRows(maintenanceBuses, "No maintenance buses found")}
+                  {renderBusRows(
+                    maintenanceBuses,
+                    "No maintenance buses found",
+                  )}
                 </tbody>
               </Table>
             </div>
           </Tab>
         </Tabs>
+      </Card>
+      <Card className="glass-card mb-4">
+        <h5 className="section-title">Manage Stops</h5>
+        <Row className="g-3 align-items-end">
+          <Col md={4}>
+            <Form.Label>Stop Name</Form.Label>
+            <Form.Control
+              className="input-soft"
+              value={stopForm.stopName}
+              onChange={(e) =>
+                setStopForm({ ...stopForm, stopName: e.target.value })
+              }
+              placeholder="Enter stop name"
+            />
+          </Col>
+          <Col md={3}>
+            <Form.Label>Latitude</Form.Label>
+            <Form.Control
+              className="input-soft"
+              type="number"
+              value={stopForm.lat}
+              onChange={(e) =>
+                setStopForm({ ...stopForm, lat: e.target.value })
+              }
+              placeholder="12.9716"
+            />
+          </Col>
+          <Col md={3}>
+            <Form.Label>Longitude</Form.Label>
+            <Form.Control
+              className="input-soft"
+              type="number"
+              value={stopForm.lng}
+              onChange={(e) =>
+                setStopForm({ ...stopForm, lng: e.target.value })
+              }
+              placeholder="77.5946"
+            />
+          </Col>
+          <Col md={2}>
+            <Button className="primary-btn w-100" onClick={handleSaveStop}>
+              Add Stop
+            </Button>
+          </Col>
+        </Row>
+        <div className="d-flex justify-content-end mt-3">
+          <Button className="primary-btn me-2" onClick={openStopListModal}>
+            View Stops
+          </Button>
+          <Button className="primary-btn" onClick={() => setStopBulkModal(true)}>
+            Bulk Add Stops
+          </Button>
+        </div>
       </Card>
 
       <Card className="glass-card mt-4">
@@ -888,7 +1287,12 @@ const handleUpdate = async () => {
                       ) : (
                         <div className="d-flex gap-2 flex-wrap">
                           {c.photos.slice(0, 3).map((p) => (
-                            <a key={p} href={`${fileBaseUrl}${p}`} target="_blank" rel="noreferrer">
+                            <a
+                              key={p}
+                              href={`${fileBaseUrl}${p}`}
+                              target="_blank"
+                              rel="noreferrer"
+                            >
                               Photo
                             </a>
                           ))}
@@ -896,7 +1300,10 @@ const handleUpdate = async () => {
                       )}
                     </td>
                     <td>
-                      <Button className="primary-btn-sm" onClick={() => openComplaintReview(c)}>
+                      <Button
+                        className="primary-btn-sm"
+                        onClick={() => openComplaintReview(c)}
+                      >
                         Review
                       </Button>
                     </td>
@@ -949,7 +1356,8 @@ const handleUpdate = async () => {
               const stopsWithCoords = (bus.stops || [])
                 .filter((s) => s.lat && s.lng)
                 .map((s) => [Number(s.lat), Number(s.lng)]);
-              const path = routePath && routePath.length > 1 ? routePath : stopsWithCoords;
+              const path =
+                routePath && routePath.length > 1 ? routePath : stopsWithCoords;
 
               if (path.length < 2) return null;
 
@@ -957,25 +1365,40 @@ const handleUpdate = async () => {
               const startPoint = path[0];
               const endPoint = path[path.length - 1];
               const startStop = (bus.stops || []).find((s) => s.lat && s.lng);
-              const endStop = [...(bus.stops || [])].reverse().find((s) => s.lat && s.lng);
+              const endStop = [...(bus.stops || [])]
+                .reverse()
+                .find((s) => s.lat && s.lng);
 
               return (
                 <Fragment key={`path-${bus.busNo}`}>
-                  <Polyline positions={path} color={color} weight={5} opacity={0.75}>
-                    <Tooltip permanent direction="center" className="bus-path-label">
+                  <Polyline
+                    positions={path}
+                    color={color}
+                    weight={5}
+                    opacity={0.75}
+                  >
+                    <Tooltip
+                      permanent
+                      direction="center"
+                      className="bus-path-label"
+                    >
                       {bus.busNo}
                     </Tooltip>
                   </Polyline>
                   <Marker key={`start-${bus.busNo}`} position={startPoint}>
                     <Popup>
                       <div className="popup-content">
-                        <div><strong>{bus.busNo}</strong> - Start Point</div>
+                        <div>
+                          <strong>{bus.busNo}</strong> - Start Point
+                        </div>
                         <div>Stop: {startStop?.stopName || "Start Stop"}</div>
                         <Button
                           size="sm"
                           className="primary-btn-sm mt-2"
                           onClick={() => {
-                            const selected = buses.find((b) => b.busNo === bus.busNo);
+                            const selected = buses.find(
+                              (b) => b.busNo === bus.busNo,
+                            );
                             if (selected) openManage(selected);
                           }}
                         >
@@ -987,13 +1410,17 @@ const handleUpdate = async () => {
                   <Marker key={`end-${bus.busNo}`} position={endPoint}>
                     <Popup>
                       <div className="popup-content">
-                        <div><strong>{bus.busNo}</strong> - End Point</div>
+                        <div>
+                          <strong>{bus.busNo}</strong> - End Point
+                        </div>
                         <div>Stop: {endStop?.stopName || "End Stop"}</div>
                         <Button
                           size="sm"
                           className="primary-btn-sm mt-2"
                           onClick={() => {
-                            const selected = buses.find((b) => b.busNo === bus.busNo);
+                            const selected = buses.find(
+                              (b) => b.busNo === bus.busNo,
+                            );
                             if (selected) openManage(selected);
                           }}
                         >
@@ -1018,14 +1445,18 @@ const handleUpdate = async () => {
                 >
                   <Popup>
                     <div className="popup-content">
-                      <div><strong>{bus.busNo}</strong> - {bus.routeName}</div>
+                      <div>
+                        <strong>{bus.busNo}</strong> - {bus.routeName}
+                      </div>
                       <div>Status: {bus.status}</div>
                       <div>Driver: {bus.driverId || "Unassigned"}</div>
                       <Button
                         size="sm"
                         className="primary-btn-sm mt-2"
                         onClick={() => {
-                          const selected = buses.find((b) => b.busNo === bus.busNo);
+                          const selected = buses.find(
+                            (b) => b.busNo === bus.busNo,
+                          );
                           if (selected) openManage(selected);
                         }}
                       >
@@ -1042,319 +1473,569 @@ const handleUpdate = async () => {
 
       {/* MODAL */}
       <Modal
-  show={manageModal}
-  onHide={() => setManageModal(false)}
-  size="lg"
-  centered
-  dialogClassName="glass-modal"
->
+        show={manageModal}
+        onHide={() => setManageModal(false)}
+        size="lg"
+        centered
+        dialogClassName="glass-modal"
+      >
+        <Modal.Header closeButton className="glass-modal-header">
+          <Modal.Title className="modal-title-soft">Manage Bus</Modal.Title>
+        </Modal.Header>
 
-  <Modal.Header closeButton className="glass-modal-header">
-    <Modal.Title className="modal-title-soft">
-      Manage Bus
-    </Modal.Title>
-  </Modal.Header>
+        <Modal.Body className="glass-modal-body">
+          {selectedBus && (
+            <Accordion defaultActiveKey={["0"]} alwaysOpen>
+              <Accordion.Item eventKey="0">
+                <Accordion.Header>Bus Details</Accordion.Header>
+                <Accordion.Body>
+                  <Form.Label className="form-label-soft">Bus No</Form.Label>
+                  <Form.Control
+                    value={selectedBus.busNo || ""}
+                    disabled
+                    className="mb-3 input-soft"
+                  />
 
-  <Modal.Body className="glass-modal-body">
-    {selectedBus && (
-      <Accordion defaultActiveKey={["0"]} alwaysOpen>
-        <Accordion.Item eventKey="0">
-          <Accordion.Header>Bus Details</Accordion.Header>
-          <Accordion.Body>
-            <Form.Label className="form-label-soft">Bus No</Form.Label>
-            <Form.Control
-              value={selectedBus.busNo || ""}
-              disabled
-              className="mb-3 input-soft"
-            />
+                  <Form.Label className="form-label-soft">
+                    Route Name
+                  </Form.Label>
+                  <Form.Control
+                    value={selectedBus.routeName}
+                    onChange={(e) =>
+                      setSelectedBus({
+                        ...selectedBus,
+                        routeName: e.target.value,
+                      })
+                    }
+                    className="mb-3 input-soft"
+                  />
 
-            <Form.Label className="form-label-soft">Route Name</Form.Label>
-            <Form.Control
-              value={selectedBus.routeName}
-              onChange={(e) =>
-                setSelectedBus({
-                  ...selectedBus,
-                  routeName: e.target.value,
-                })
-              }
-              className="mb-3 input-soft"
-            />
+                  <Form.Label className="form-label-soft">
+                    Total Seats
+                  </Form.Label>
+                  <Form.Control
+                    type="number"
+                    value={selectedBus.totalSeats}
+                    onChange={(e) =>
+                      setSelectedBus({
+                        ...selectedBus,
+                        totalSeats: e.target.value,
+                      })
+                    }
+                    className="mb-4 input-soft"
+                  />
 
-            <Form.Label className="form-label-soft">Total Seats</Form.Label>
-            <Form.Control
-              type="number"
-              value={selectedBus.totalSeats}
-              onChange={(e) =>
-                setSelectedBus({
-                  ...selectedBus,
-                  totalSeats: e.target.value,
-                })
-              }
-              className="mb-4 input-soft"
-            />
+                  <Form.Label className="form-label-soft">
+                    Condition Status
+                  </Form.Label>
+                  <Form.Select
+                    value={selectedBus.conditionStatus || "good"}
+                    onChange={(e) =>
+                      setSelectedBus({
+                        ...selectedBus,
+                        conditionStatus: e.target.value,
+                      })
+                    }
+                    className="mb-4 input-soft"
+                  >
+                    <option value="good">Good</option>
+                    <option value="need-repair">Need Repair</option>
+                  </Form.Select>
 
-            <Form.Label className="form-label-soft">Condition Status</Form.Label>
-            <Form.Select
-              value={selectedBus.conditionStatus || "good"}
-              onChange={(e) =>
-                setSelectedBus({
-                  ...selectedBus,
-                  conditionStatus: e.target.value,
-                })
-              }
-              className="mb-4 input-soft"
-            >
-              <option value="good">Good</option>
-              <option value="need-repair">Need Repair</option>
-            </Form.Select>
+                  <Form.Label className="form-label-soft">Bus Type</Form.Label>
+                  <Form.Select
+                    value={selectedBus.busType || "alternative"}
+                    onChange={(e) =>
+                      setSelectedBus({
+                        ...selectedBus,
+                        busType: e.target.value,
+                      })
+                    }
+                    className="mb-4 input-soft"
+                  >
+                    <option value="alternative">Alternative</option>
+                    <option value="regular">Regular</option>
+                  </Form.Select>
 
-            <Form.Label className="form-label-soft">Bus Type</Form.Label>
-            <Form.Select
-              value={selectedBus.busType || "alternative"}
-              onChange={(e) =>
-                setSelectedBus({
-                  ...selectedBus,
-                  busType: e.target.value,
-                })
-              }
-              className="mb-4 input-soft"
-            >
-              <option value="alternative">Alternative</option>
-              <option value="regular">Regular</option>
-            </Form.Select>
+                  <Form.Label className="form-label-soft">
+                    Morning Start Time
+                  </Form.Label>
+                  <Form.Control
+                    type="time"
+                    value={selectedBus.tripStartMorning || ""}
+                    onChange={(e) =>
+                      setSelectedBus({
+                        ...selectedBus,
+                        tripStartMorning: e.target.value,
+                      })
+                    }
+                    className="mb-3 input-soft"
+                  />
 
-            <Form.Label className="form-label-soft">Morning Start Time</Form.Label>
-            <Form.Control
-              type="time"
-              value={selectedBus.tripStartMorning || ""}
-              onChange={(e) =>
-                setSelectedBus({
-                  ...selectedBus,
-                  tripStartMorning: e.target.value,
-                })
-              }
-              className="mb-3 input-soft"
-            />
+                  <Form.Label className="form-label-soft">
+                    Morning End Time
+                  </Form.Label>
+                  <Form.Control
+                    type="time"
+                    value={selectedBus.tripEndMorning || ""}
+                    onChange={(e) =>
+                      setSelectedBus({
+                        ...selectedBus,
+                        tripEndMorning: e.target.value,
+                      })
+                    }
+                    className="mb-3 input-soft"
+                  />
 
-            <Form.Label className="form-label-soft">Morning End Time</Form.Label>
-            <Form.Control
-              type="time"
-              value={selectedBus.tripEndMorning || ""}
-              onChange={(e) =>
-                setSelectedBus({
-                  ...selectedBus,
-                  tripEndMorning: e.target.value,
-                })
-              }
-              className="mb-3 input-soft"
-            />
+                  <Form.Label className="form-label-soft">
+                    Evening Start Time
+                  </Form.Label>
+                  <Form.Control
+                    type="time"
+                    value={selectedBus.tripStartEvening || ""}
+                    onChange={(e) =>
+                      setSelectedBus({
+                        ...selectedBus,
+                        tripStartEvening: e.target.value,
+                      })
+                    }
+                    className="mb-3 input-soft"
+                  />
 
-            <Form.Label className="form-label-soft">Evening Start Time</Form.Label>
-            <Form.Control
-              type="time"
-              value={selectedBus.tripStartEvening || ""}
-              onChange={(e) =>
-                setSelectedBus({
-                  ...selectedBus,
-                  tripStartEvening: e.target.value,
-                })
-              }
-              className="mb-3 input-soft"
-            />
+                  <Form.Label className="form-label-soft">
+                    Evening End Time
+                  </Form.Label>
+                  <Form.Control
+                    type="time"
+                    value={selectedBus.tripEndEvening || ""}
+                    onChange={(e) =>
+                      setSelectedBus({
+                        ...selectedBus,
+                        tripEndEvening: e.target.value,
+                      })
+                    }
+                    className="mb-2 input-soft"
+                  />
+                </Accordion.Body>
+              </Accordion.Item>
 
-            <Form.Label className="form-label-soft">Evening End Time</Form.Label>
-            <Form.Control
-              type="time"
-              value={selectedBus.tripEndEvening || ""}
-              onChange={(e) =>
-                setSelectedBus({
-                  ...selectedBus,
-                  tripEndEvening: e.target.value,
-                })
-              }
-              className="mb-2 input-soft"
-            />
-          </Accordion.Body>
-        </Accordion.Item>
+              <Accordion.Item eventKey="1">
+                <Accordion.Header>Add Stops</Accordion.Header>
+                <Accordion.Body>
+                  <div className="d-flex gap-2 mb-3">
+                    <Button
+                      size="sm"
+                      className="add-stop-btn"
+                      onClick={addStop}
+                    >
+                      + Add Stop
+                    </Button>
+                  </div>
 
-        <Accordion.Item eventKey="1">
-          <Accordion.Header>Add Stops</Accordion.Header>
-          <Accordion.Body>
-            <div className="d-flex gap-2 mb-3">
-              <Button
-                size="sm"
-                className="add-stop-btn"
-                onClick={addStop}
-              >
-                + Add Stop
-              </Button>
-            </div>
-
-            <div className="bulk-stop-box mb-2">
-              <Form.Label className="form-label-soft">Add More Stops (CSV-like, one per line)</Form.Label>
-              <Form.Control
-                as="textarea"
-                rows={4}
-                value={bulkStopsText}
-                onChange={(e) => setBulkStopsText(e.target.value)}
-                className="input-soft"
-                placeholder={"Stop Name,12.9716,77.5946,08:10,17:10\nSecond Stop,12.9750,77.6010,08:20,17:20"}
-              />
-              <div className="bulk-stop-help">
-                Format: <code>stopName,lat,lng[,morningTime,eveningTime]</code>. If times are skipped, default <code>00:00</code> is used.
-              </div>
-              <Button size="sm" className="add-stop-btn mt-2" onClick={handleBulkAddStops}>
-                Add Stops From Text
-              </Button>
-            </div>
-          </Accordion.Body>
-        </Accordion.Item>
-
-        <Accordion.Item eventKey="2">
-          <Accordion.Header>Stops ({selectedBus.stops.length})</Accordion.Header>
-          <Accordion.Body>
-            {selectedBus.stops.map((stop, index) => (
-              <Card
-                key={index}
-                className={`stop-glass-card mb-3 ${dragOverStopIndex === index ? "stop-drag-over" : ""}`}
-                draggable
-                onDragStart={(e) => {
-                  if (["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(e.target.tagName)) {
-                    e.preventDefault();
-                    return;
-                  }
-                  setDraggedStopIndex(index);
-                }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  if (dragOverStopIndex !== index) setDragOverStopIndex(index);
-                }}
-                onDragLeave={() => setDragOverStopIndex(null)}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  if (draggedStopIndex !== null) moveStop(draggedStopIndex, index);
-                  setDraggedStopIndex(null);
-                  setDragOverStopIndex(null);
-                }}
-                onDragEnd={() => {
-                  setDraggedStopIndex(null);
-                  setDragOverStopIndex(null);
-                }}
-              >
-                <Row className="g-2 align-items-center">
-                  <Col xs={12} md={1}>
-                    <div className="stop-index-chip">#{index + 1}</div>
-                  </Col>
-
-                  <Col xs={12} md={3}>
+                  <div className="bulk-stop-box mb-2">
+                    <Form.Label className="form-label-soft">
+                      Add More Stops (CSV-like, one per line)
+                    </Form.Label>
                     <Form.Control
-                      placeholder="Stop Name"
-                      value={stop.stopName}
-                      onChange={(e) => updateStop(index, "stopName", e.target.value)}
+                      as="textarea"
+                      rows={4}
+                      value={bulkStopsText}
+                      onChange={(e) => setBulkStopsText(e.target.value)}
                       className="input-soft"
+                      placeholder={
+                        "Main Gate,08:10,17:10\nLibrary Stop,08:20,17:20"
+                      }
                     />
-                  </Col>
-
-                  <Col xs={6} md={2}>
-                    <Form.Control
-                      type="number"
-                      placeholder="Latitude"
-                      value={stop.lat}
-                      onChange={(e) => updateStop(index, "lat", e.target.value)}
-                      className="input-soft"
-                    />
-                  </Col>
-
-                  <Col xs={6} md={2}>
-                    <Form.Control
-                      type="number"
-                      placeholder="Longitude"
-                      value={stop.lng}
-                      onChange={(e) => updateStop(index, "lng", e.target.value)}
-                      className="input-soft"
-                    />
-                  </Col>
-
-                  <Col xs={6} md={2}>
-                    <Form.Control
-                      type="time"
-                      value={stop.morningTime}
-                      onChange={(e) => updateStop(index, "morningTime", e.target.value)}
-                      className="input-soft"
-                    />
-                  </Col>
-
-                  <Col xs={6} md={2}>
-                    <Form.Control
-                      type="time"
-                      value={stop.eveningTime}
-                      onChange={(e) => updateStop(index, "eveningTime", e.target.value)}
-                      className="input-soft"
-                    />
-                  </Col>
-
-                  <Col xs={12} md={2}>
-                    <div className="d-flex gap-1 justify-content-md-end">
-                      <Button
-                        className="reorder-stop-btn"
-                        size="sm"
-                        onClick={() => moveStopUp(index)}
-                        disabled={index === 0}
-                      >
-                        Up
-                      </Button>
-                      <Button
-                        className="reorder-stop-btn"
-                        size="sm"
-                        onClick={() => moveStopDown(index)}
-                        disabled={index === selectedBus.stops.length - 1}
-                      >
-                        Down
-                      </Button>
-                      <Button
-                        className="delete-stop-btn"
-                        size="sm"
-                        onClick={() => removeStop(index)}
-                      >
-                        X
-                      </Button>
+                    <div className="bulk-stop-help">
+                      Format: <code>stopName[,morningTime,eveningTime]</code>.
+                      If times are skipped, default <code>00:00</code> is used.
                     </div>
-                  </Col>
-                </Row>
-              </Card>
+                    <Button
+                      size="sm"
+                      className="add-stop-btn mt-2"
+                      onClick={handleBulkAddStops}
+                    >
+                      Add Stops From Text
+                    </Button>
+                  </div>
+                </Accordion.Body>
+              </Accordion.Item>
+
+              <Accordion.Item eventKey="2">
+                <Accordion.Header>
+                  Stops ({selectedBus.stops.length})
+                </Accordion.Header>
+                <Accordion.Body>
+                  {selectedBus.stops.map((stop, index) => (
+                    <Card
+                      key={index}
+                      className={`stop-glass-card mb-3 ${dragOverStopIndex === index ? "stop-drag-over" : ""}`}
+                      draggable
+                      onDragStart={(e) => {
+                        if (
+                          ["INPUT", "TEXTAREA", "SELECT", "BUTTON"].includes(
+                            e.target.tagName,
+                          )
+                        ) {
+                          e.preventDefault();
+                          return;
+                        }
+                        setDraggedStopIndex(index);
+                      }}
+                      onDragOver={(e) => {
+                        e.preventDefault();
+                        if (dragOverStopIndex !== index)
+                          setDragOverStopIndex(index);
+                      }}
+                      onDragLeave={() => setDragOverStopIndex(null)}
+                      onDrop={(e) => {
+                        e.preventDefault();
+                        if (draggedStopIndex !== null)
+                          moveStop(draggedStopIndex, index);
+                        setDraggedStopIndex(null);
+                        setDragOverStopIndex(null);
+                      }}
+                      onDragEnd={() => {
+                        setDraggedStopIndex(null);
+                        setDragOverStopIndex(null);
+                      }}
+                    >
+                      <Row className="g-2 align-items-center">
+                        <Col xs={12} md={1}>
+                          <div className="stop-index-chip">#{index + 1}</div>
+                        </Col>
+
+                        <Col xs={12} md={3}>
+                          <Form.Control
+                            placeholder="Stop Name"
+                            value={stop.stopName}
+                            onChange={(e) =>
+                              updateStop(index, "stopName", e.target.value)
+                            }
+                            className="input-soft"
+                          />
+                        </Col>
+
+                        <Col xs={6} md={3}>
+                          <Form.Control
+                            type="time"
+                            value={stop.morningTime}
+                            onChange={(e) =>
+                              updateStop(index, "morningTime", e.target.value)
+                            }
+                            className="input-soft"
+                          />
+                        </Col>
+
+                        <Col xs={6} md={3}>
+                          <Form.Control
+                            type="time"
+                            value={stop.eveningTime}
+                            onChange={(e) =>
+                              updateStop(index, "eveningTime", e.target.value)
+                            }
+                            className="input-soft"
+                          />
+                        </Col>
+
+                        <Col xs={12} md={2}>
+                          <div className="d-flex gap-1 justify-content-md-end">
+                            <Button
+                              className="reorder-stop-btn"
+                              size="sm"
+                              onClick={() => moveStopUp(index)}
+                              disabled={index === 0}
+                            >
+                              Up
+                            </Button>
+                            <Button
+                              className="reorder-stop-btn"
+                              size="sm"
+                              onClick={() => moveStopDown(index)}
+                              disabled={index === selectedBus.stops.length - 1}
+                            >
+                              Down
+                            </Button>
+                            <Button
+                              className="delete-stop-btn"
+                              size="sm"
+                              onClick={() => removeStop(index)}
+                            >
+                              X
+                            </Button>
+                          </div>
+                        </Col>
+                      </Row>
+                    </Card>
+                  ))}
+                </Accordion.Body>
+              </Accordion.Item>
+
+              <Accordion.Item eventKey="3">
+                <Accordion.Header>Other</Accordion.Header>
+                <Accordion.Body>
+                  <Button className="delete-bus-btn" onClick={handleDelete}>
+                    Delete Bus
+                  </Button>
+                </Accordion.Body>
+              </Accordion.Item>
+            </Accordion>
+          )}
+        </Modal.Body>
+
+        <Modal.Footer className="glass-modal-footer">
+          <Button
+            className="secondary-btn-soft"
+            onClick={() => setManageModal(false)}
+          >
+            Close
+          </Button>
+
+          <Button className="primary-btn" onClick={handleUpdate}>
+            Save Changes
+          </Button>
+        </Modal.Footer>
+      </Modal>
+
+      <Modal
+        show={missingStopModal}
+        onHide={() => {
+          setMissingStopModal(false);
+          setPendingBusAction(null);
+        }}
+        centered
+      >
+        <Modal.Header closeButton>
+          <Modal.Title>Add Missing Stops</Modal.Title>
+        </Modal.Header>
+        <Modal.Body>
+          <p className="mb-3">
+            These stops are missing in Stop DB. Add coordinates to continue.
+          </p>
+          <div className="d-flex flex-column gap-3">
+            {missingStopRows.map((row, idx) => (
+              <Row key={`${row.stopName}-${idx}`} className="g-2">
+                <Col md={5}>
+                  <Form.Control value={row.stopName} disabled />
+                </Col>
+                <Col md={3}>
+                  <Form.Control
+                    type="number"
+                    placeholder="Latitude"
+                    value={row.lat}
+                    onChange={(e) => {
+                      const next = [...missingStopRows];
+                      next[idx].lat = e.target.value;
+                      setMissingStopRows(next);
+                    }}
+                  />
+                </Col>
+                <Col md={4}>
+                  <Form.Control
+                    type="number"
+                    placeholder="Longitude"
+                    value={row.lng}
+                    onChange={(e) => {
+                      const next = [...missingStopRows];
+                      next[idx].lng = e.target.value;
+                      setMissingStopRows(next);
+                    }}
+                  />
+                </Col>
+              </Row>
             ))}
-          </Accordion.Body>
-        </Accordion.Item>
+          </div>
+        </Modal.Body>
+        <Modal.Footer>
+          <Button
+            variant="secondary"
+            onClick={() => {
+              setMissingStopModal(false);
+              setPendingBusAction(null);
+            }}
+          >
+            Cancel
+          </Button>
+          <Button className="primary-btn" onClick={handleSaveMissingStops}>
+            Save and Continue
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
-        <Accordion.Item eventKey="3">
-          <Accordion.Header>Other</Accordion.Header>
-          <Accordion.Body>
-            <Button className="delete-bus-btn" onClick={handleDelete}>
-              Delete Bus
-            </Button>
-          </Accordion.Body>
-        </Accordion.Item>
-      </Accordion>
-    )}
-  </Modal.Body>
+      <Modal
+        show={stopBulkModal}
+        onHide={() => setStopBulkModal(false)}
+        centered
+        dialogClassName="glass-modal"
+      >
+        <Modal.Header closeButton className="glass-modal-header">
+          <Modal.Title className="modal-title-soft">Bulk Add Stops</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="glass-modal-body">
+          <Form.Label>Paste CSV rows (one per line)</Form.Label>
+          <Form.Control
+            as="textarea"
+            rows={6}
+            className="input-soft"
+            value={stopBulkText}
+            onChange={(e) => setStopBulkText(e.target.value)}
+            placeholder={"Main Gate,12.9716,77.5946\nLibrary Stop,12.9750,77.6010"}
+          />
+          <div className="bulk-stop-help mt-2">
+            Format: <code>stop,lat,lng</code> (one per line)
+          </div>
+        </Modal.Body>
+        <Modal.Footer className="glass-modal-footer">
+          <Button variant="secondary" onClick={() => setStopBulkModal(false)}>
+            Cancel
+          </Button>
+          <Button
+            className="primary-btn"
+            onClick={async () => {
+              const ok = await handleBulkStopAdd();
+              if (ok) setStopBulkModal(false);
+            }}
+            disabled={stopBulkLoading}
+          >
+            {stopBulkLoading ? "Adding..." : "Add Stops"}
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
-  <Modal.Footer className="glass-modal-footer">
-    <Button
-      className="secondary-btn-soft"
-      onClick={() => setManageModal(false)}
-    >
-      Close
-    </Button>
+      <Modal
+        show={stopListModal}
+        onHide={() => setStopListModal(false)}
+        size="lg"
+        centered
+        dialogClassName="glass-modal"
+      >
+        <Modal.Header closeButton className="glass-modal-header">
+          <Modal.Title className="modal-title-soft">Stops List</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="glass-modal-body stop-list-modal-body">
+          <Row className="g-2 mb-3">
+            <Col md={12}>
+              <Form.Control
+                className="input-soft"
+                placeholder="Search stop name"
+                value={stopSearch}
+                onChange={(e) => {
+                  setStopSearch(e.target.value);
+                  setStopPage(1);
+                }}
+              />
+            </Col>
+          </Row>
+          {paginatedStops.length === 0 && (
+            <div className="text-center text-muted py-3">No stops found</div>
+          )}
+          {groupedLetters.map((letter) => (
+            <div key={letter} className="mb-3">
+              <h6 className="mb-2">{letter}</h6>
+              <div className="stop-lookup-grid">
+                {groupedStops[letter].map((stop) => (
+                  <Card
+                    key={stop._id}
+                    className="stop-glass-card stop-lookup-card"
+                    role="button"
+                    onClick={() => openStopDetail(stop)}
+                  >
+                    <div className="fw-semibold">{stop.stopName}</div>
+                  </Card>
+                ))}
+              </div>
+            </div>
+          ))}
+          <div className="d-flex justify-content-between align-items-center mt-3 flex-wrap gap-2">
+            <small className="text-muted">
+              Showing {filteredSortedStops.length === 0 ? 0 : (stopPage - 1) * STOPS_PER_PAGE + 1}-
+              {Math.min(stopPage * STOPS_PER_PAGE, filteredSortedStops.length)} of {filteredSortedStops.length}
+            </small>
+            <Pagination className="mb-0">
+              <Pagination.Prev
+                onClick={() => setStopPage((p) => Math.max(1, p - 1))}
+                disabled={stopPage === 1}
+              />
+              {Array.from({ length: totalStopPages }, (_, i) => i + 1).map((p) => (
+                <Pagination.Item
+                  key={p}
+                  active={p === stopPage}
+                  onClick={() => setStopPage(p)}
+                >
+                  {p}
+                </Pagination.Item>
+              ))}
+              <Pagination.Next
+                onClick={() => setStopPage((p) => Math.min(totalStopPages, p + 1))}
+                disabled={stopPage === totalStopPages}
+              />
+            </Pagination>
+          </div>
+        </Modal.Body>
+      </Modal>
 
-    <Button
-      className="primary-btn"
-      onClick={handleUpdate}
-    >
-      Save Changes
-    </Button>
-  </Modal.Footer>
-
-</Modal>
+      <Modal
+        show={stopDetailModal}
+        onHide={() => {
+          setStopDetailModal(false);
+          setStopDetail(null);
+        }}
+        centered
+        dialogClassName="glass-modal"
+      >
+        <Modal.Header closeButton className="glass-modal-header">
+          <Modal.Title className="modal-title-soft">Stop Details</Modal.Title>
+        </Modal.Header>
+        <Modal.Body className="glass-modal-body">
+          {stopDetail && (
+            <Row className="g-3">
+              <Col md={12}>
+                <Form.Label>Stop Name</Form.Label>
+                <Form.Control
+                  className="input-soft"
+                  value={stopDetail.stopName}
+                  onChange={(e) =>
+                    setStopDetail({ ...stopDetail, stopName: e.target.value })
+                  }
+                />
+              </Col>
+              <Col md={6}>
+                <Form.Label>Latitude</Form.Label>
+                <Form.Control
+                  className="input-soft"
+                  type="number"
+                  value={stopDetail.lat}
+                  onChange={(e) =>
+                    setStopDetail({ ...stopDetail, lat: e.target.value })
+                  }
+                />
+              </Col>
+              <Col md={6}>
+                <Form.Label>Longitude</Form.Label>
+                <Form.Control
+                  className="input-soft"
+                  type="number"
+                  value={stopDetail.lng}
+                  onChange={(e) =>
+                    setStopDetail({ ...stopDetail, lng: e.target.value })
+                  }
+                />
+              </Col>
+            </Row>
+          )}
+        </Modal.Body>
+        <Modal.Footer className="glass-modal-footer">
+          <Button
+            className="delete-stop-btn"
+            onClick={() => stopDetail && handleDeleteStop(stopDetail)}
+          >
+            Delete
+          </Button>
+          <Button className="primary-btn" onClick={handleUpdateStopDetail}>
+            Update
+          </Button>
+        </Modal.Footer>
+      </Modal>
 
       <Modal
         show={complaintModal}
@@ -1363,14 +2044,23 @@ const handleUpdate = async () => {
         dialogClassName="glass-modal"
       >
         <Modal.Header closeButton className="glass-modal-header">
-          <Modal.Title className="modal-title-soft">Review Complaint</Modal.Title>
+          <Modal.Title className="modal-title-soft">
+            Review Complaint
+          </Modal.Title>
         </Modal.Header>
         <Modal.Body className="glass-modal-body">
           {selectedComplaint && (
             <>
-              <p><strong>Bus:</strong> {selectedComplaint.busNo}</p>
-              <p><strong>Issue:</strong> {selectedComplaint.complaintType}</p>
-              <p><strong>Description:</strong> {selectedComplaint.description || "-"}</p>
+              <p>
+                <strong>Bus:</strong> {selectedComplaint.busNo}
+              </p>
+              <p>
+                <strong>Issue:</strong> {selectedComplaint.complaintType}
+              </p>
+              <p>
+                <strong>Description:</strong>{" "}
+                {selectedComplaint.description || "-"}
+              </p>
 
               <Form.Group className="mb-3">
                 <Form.Label>Status</Form.Label>
@@ -1412,7 +2102,10 @@ const handleUpdate = async () => {
           )}
         </Modal.Body>
         <Modal.Footer className="glass-modal-footer">
-          <Button className="secondary-btn-soft" onClick={() => setComplaintModal(false)}>
+          <Button
+            className="secondary-btn-soft"
+            onClick={() => setComplaintModal(false)}
+          >
             Close
           </Button>
           <Button className="primary-btn" onClick={handleComplaintReview}>
