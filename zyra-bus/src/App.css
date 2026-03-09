@@ -1,4 +1,6 @@
-
+:root {
+    --font-primary: 'Excon', sans-serif;
+  }
 
 .primary-color{
   color: blueviolet;
