@@ -271,6 +271,126 @@ router.get(
 );
 
 router.get(
+  "/trip/:busNo/tracking",
+  auth,
+  allowRoles(["student"]),
+  async (req, res) => {
+    try {
+      const { busNo } = req.params;
+
+      const student = await Student.findOne({ userId: req.user.id });
+      if (!student || !student.assignedBus) {
+        return res.status(400).json({ message: "No assigned bus" });
+      }
+      if (String(student.assignedBus) !== String(busNo)) {
+        return res.status(403).json({ message: "Unauthorized bus" });
+      }
+
+      // Priority: running -> paused -> planned
+      let trip =
+        (await Trip.findOne({ busNo, status: "running" })) ||
+        (await Trip.findOne({ busNo, status: "paused" })) ||
+        (await Trip.findOne({ busNo, status: "planned" }).sort({ createdAt: 1 }));
+
+      if (!trip) {
+        return res.json({ message: "No active trip" });
+      }
+
+      const bus = await Bus.findOne({ busNo });
+      if (!bus) return res.status(404).json({ message: "Bus not found" });
+      const enrichedBus = await enrichBusWithStopCoords(bus);
+
+      const now = Date.now();
+
+      const gpsTimeout = 30000;
+      let trackingMode = "time";
+      if (
+        trip.lastLocationUpdate &&
+        now - trip.lastLocationUpdate.getTime() < gpsTimeout
+      ) {
+        trackingMode = "gps";
+      }
+
+      const startMs = trip.startTime ? new Date(trip.startTime).getTime() : NaN;
+      const pausedDuration = trip.pausedDuration || 0;
+
+      if (!Number.isFinite(startMs) || !trip.totalTime) {
+        return res.json({
+          trackingMode,
+          busLocation: trip.currentLocation || null,
+          progressPercent: 0,
+          currentStopIndex: -1,
+          eta: [],
+          trip: {
+            _id: trip._id,
+            busNo: trip.busNo,
+            status: trip.status,
+            tripType: trip.tripType,
+            destination: trip.destination,
+            destinationLat: trip.destinationLat,
+            destinationLng: trip.destinationLng,
+            eventStops: trip.eventStops || [],
+          },
+        });
+      }
+
+      const effectiveElapsed = now - startMs - pausedDuration;
+
+      let cumulativeMs = 0;
+      let currentIndex = 0;
+      const etaList = [];
+
+      for (let i = 0; i < (enrichedBus?.stops || []).length; i++) {
+        if (i > 0) {
+          cumulativeMs += (trip.segmentTimes?.[i - 1] || 0) * 60000;
+        }
+
+        let status = "upcoming";
+        if (effectiveElapsed >= cumulativeMs) {
+          status = "completed";
+          currentIndex = i;
+        } else if (i === currentIndex) {
+          status = "current";
+        }
+
+        const etaTime = new Date(startMs + cumulativeMs + pausedDuration);
+
+        etaList.push({
+          stop: enrichedBus.stops[i],
+          eta: etaTime,
+          status,
+        });
+      }
+
+      const progressPercent = Math.min(
+        (effectiveElapsed / (trip.totalTime * 60000)) * 100,
+        100,
+      );
+
+      res.json({
+        trackingMode,
+        busLocation: trip.currentLocation || null,
+        progressPercent,
+        currentStopIndex: currentIndex,
+        eta: etaList,
+        trip: {
+          _id: trip._id,
+          busNo: trip.busNo,
+          status: trip.status,
+          tripType: trip.tripType,
+          destination: trip.destination,
+          destinationLat: trip.destinationLat,
+          destinationLng: trip.destinationLng,
+          eventStops: trip.eventStops || [],
+        },
+      });
+    } catch (error) {
+      res.status(500).json({ message: error.message });
+    }
+  },
+);
+
+router.get(
   "/announcement",
   auth,
   allowRoles(["student"]),

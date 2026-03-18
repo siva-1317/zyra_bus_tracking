@@ -3,6 +3,7 @@ import Header from "../../components/Header";
 import { Container, Row, Col, Card, Modal, Form, Button } from "react-bootstrap";
 import API from "../../api";
 import { toast } from "../../utils/toast";
+import StudentTrackingMap from "./StudentTrackingMap";
 
 function StudentDashboard() {
   const [student, setStudent] = useState(null);
@@ -568,6 +569,11 @@ console.log("Track:", track);
                 )}
           </Card.Body>
         </Card>
+
+        <StudentTrackingMap
+          busNo={student?.assignedBus || bus?.busNo}
+          bus={bus}
+        />
 
         <Card className="mt-4 p-3 neo-card">
           <Card.Body>
