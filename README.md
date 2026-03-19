@@ -282,3 +282,46 @@ MongoDB Database
   
   Full Stack Developer | AI Enthusiast
 
+---
+
+## Deployment
+
+### Backend on Render
+
+This repo includes `render.yaml` for the Express API in `backend`.
+
+Set these Render environment variables:
+
+- `MONGO_URL`
+- `JWT_SECRET`
+
+Use these service settings:
+
+- Root directory: `backend`
+- Build command: `npm install`
+- Start command: `npm start`
+- Health check path: `/api/health`
+
+### Frontend on Netlify
+
+This repo includes `netlify.toml` for the React app in `zyra-bus`.
+
+Set this Netlify environment variable:
+
+- `REACT_APP_API_URL=https://your-render-backend.onrender.com/api`
+
+Use these site settings:
+
+- Base directory: `zyra-bus`
+- Build command: `npm run build`
+- Publish directory: `build`
+
+### Environment Examples
+
+- `backend/.env.example`
+- `zyra-bus/.env.example`
+
+### Important Note
+
+Files uploaded to `backend/uploads` are stored on the server filesystem. On Render, that storage is not permanent across redeploys or restarts, so move uploads to cloud storage later if you need them to persist.
+

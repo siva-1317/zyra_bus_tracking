@@ -27,7 +27,14 @@ function App() {
         <Route path="/" element={<Login />} />
         <Route path="/create-account" element={<CreateAccount />} />
 
-        <Route path="/student/dashboard" element={<StudentDashboard />} />
+        <Route
+          path="/student/dashboard"
+          element={
+            <ProtectedRoute>
+              <StudentDashboard />
+            </ProtectedRoute>
+          }
+        />
 
         <Route
           path="/driver/dashboard"
@@ -47,7 +54,14 @@ function App() {
           }
         />
 
-        <Route path="/admin" element={<AdminLayout />}>
+        <Route
+          path="/admin"
+          element={
+            <ProtectedRoute>
+              <AdminLayout />
+            </ProtectedRoute>
+          }
+        >
           <Route path="dashboard" element={<AdminDashboard />} />
           <Route path="bus" element={<ManageBus />} />
           <Route path="student" element={<ManageStudent />} />

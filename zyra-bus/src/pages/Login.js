@@ -34,6 +34,7 @@ export default function Login() {
 
       localStorage.setItem("token", token);
       localStorage.setItem("role", user.role);
+      localStorage.setItem("user", JSON.stringify(user));
 
       setTimeout(() => {
         navigate(`/${user.role}/dashboard`);

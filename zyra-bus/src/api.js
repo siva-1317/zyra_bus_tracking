@@ -1,7 +1,9 @@
 import axios from "axios";
 
+const apiBaseUrl ="https://zyra-bus-tracking.onrender.com/api";
+
 const API = axios.create({
-  baseURL: "http://localhost:5000/api", // Change if needed
+  baseURL: apiBaseUrl,
 });
 
 // Automatically attach JWT token

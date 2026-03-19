@@ -8,16 +8,16 @@ async function createAdmin() {
   try {
     await mongoose.connect(process.env.MONGO_URL);
 
-    const existingAdmin = await User.findOne({ username: "admin1" });
+    const existingAdmin = await User.findOne({ username: "ZYRA" });
     if (existingAdmin) {
       console.log("Admin already exists");
       process.exit();
     }
 
-    const hashedPassword = await bcrypt.hash("admin", 10);
+    const hashedPassword = await bcrypt.hash("zyra", 10);
 
     await User.create({
-      username: "admin1",
+      username: "ZYRA",
       password: hashedPassword,
       role: "admin",
       mustChangePassword: true
