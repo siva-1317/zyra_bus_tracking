@@ -385,21 +385,21 @@ if (stopTimeInMinutes !== null) {
 
   /* ================= SAFE DEBUG ================= */
 
-  if (student) {
-    console.log("Student Stop:", student.busStop);
-  }
+  // if (student) {
+  //   console.log("Student Stop:", student.busStop);
+  // }
 
-  if (bus) {
-    console.log("Bus Stops:", bus.stops);
-  }
+  // if (bus) {
+  //   console.log("Bus Stops:", bus.stops);
+  // }
 
   /* ================= UI ================= */
 
 
-console.log("Current:", currentTime);
-console.log("Bus Start:", stopDetails?.morningTime);
-console.log("Bus End:", busEndTime);
-console.log("Track:", track);
+// console.log("Current:", currentTime);
+// console.log("Bus Start:", stopDetails?.morningTime);
+// console.log("Bus End:", busEndTime);
+// console.log("Track:", track);
 
 
 
